@@ -1,13 +1,15 @@
 package gal3rest
 
 import (
-	"gorest.googlecode.com/hg/gorest"
 	"fmt"
+	"http"
 )
 
 func TestConnection() {
-	rb, _ := gorest.NewRequestBuilder()
-	var u string
-	rb.Get(u, "http://www.timandmeg.net/gallyer3/index.php/rest/item/1")
-	fmt.Println(u)
+	client := new(http.Client)
+	response, err := client.Get("http://www.timandmeg.net/gallery3/index.php/")
+	if err != nil {
+		fmt.Println("error: ", err.String())
+	}
+	fmt.Print("Status: ", response.Status)
 }

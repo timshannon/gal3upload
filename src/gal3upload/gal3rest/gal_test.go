@@ -6,6 +6,6 @@ import (
 )
 
 func TestRest(t *testing.T) {
-	TestConnection()
-	fmt.Println("test")
+	response := TestConnection("http://www.timandmeg.net/gallery3/index.php")
+	fmt.Println(response)
 }

@@ -4,9 +4,11 @@ import (
 	"log"
 	"http"
 	"strings"
+	"io/ioutil"
+	"json"
 )
 
-func TestConnection(url string) *http.Response {
+func TestConnection(url string) string {
 	client := new(http.Client)
 	reader := new(strings.Reader) //TODO: build actuall content
 	if url[:1] != "/" {
@@ -20,6 +22,20 @@ func TestConnection(url string) *http.Response {
 	if err != nil {
 		log.Panic("Error connecting to: "+url+" Error: ", err)
 	}
+	body, err := ioutil.ReadAll(response.Body)
+	response.Close()
+	if err != nil {
+		log.Panic("Error reading response: ", err)
+	}
 
-	return response
+	json.Unmarshal(body, result)
+	return string(result)
+
+}
+
+type RestData struct {
+	url           string
+	entity        map[string]string
+	relationships map[string]string
+	members       map[string]string
 }

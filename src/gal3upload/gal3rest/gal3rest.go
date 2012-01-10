@@ -6,9 +6,10 @@ import (
 	"strings"
 	"io/ioutil"
 	"json"
+	"fmt"
 )
 
-func TestConnection(url string) interface{} {
+func TestConnection(url string) (RestResponse, interface{}) {
 	client := new(http.Client)
 	reader := new(strings.Reader) //TODO: build actuall content
 	if url[:1] != "/" {
@@ -27,18 +28,22 @@ func TestConnection(url string) interface{} {
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
-	var data interface{}
+	var data RestResponse
+	var unmarshalled interface{}
 	err = json.Unmarshal(body, &data)
+
 	if err != nil {
-		log.Panic("Error unmarshelling json data: ", err)
+		//don't care about some values?
+		fmt.Println("Error unmarshelling json data: ", err)
 	}
 
-	return data
+	err = json.Unmarshal(body, &unmarshalled)
+	return data, unmarshalled
 }
 
-type RestData struct {
+type RestResponse struct {
 	Url           string
 	Entity        map[string]string
 	Relationships map[string]string
-	Members       map[string]string
+	Members       []string
 }

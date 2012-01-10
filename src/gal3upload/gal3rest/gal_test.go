@@ -6,6 +6,9 @@ import (
 )
 
 func TestRest(t *testing.T) {
-	response := TestConnection("http://www.timandmeg.net/gallery3/index.php")
-	fmt.Println(response)
+	response, unmarshalled := TestConnection("http://www.timandmeg.net/gallery3/index.php")
+	fmt.Println("Members:")
+	fmt.Println(response.Members)
+	fmt.Println("Unmarshalled:")
+	fmt.Println(unmarshalled)
 }

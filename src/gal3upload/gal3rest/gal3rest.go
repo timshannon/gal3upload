@@ -8,7 +8,7 @@ import (
 	"json"
 )
 
-func TestConnection(url string) string {
+func TestConnection(url string) interface{} {
 	client := new(http.Client)
 	reader := new(strings.Reader) //TODO: build actuall content
 	if url[:1] != "/" {
@@ -23,19 +23,22 @@ func TestConnection(url string) string {
 		log.Panic("Error connecting to: "+url+" Error: ", err)
 	}
 	body, err := ioutil.ReadAll(response.Body)
-	response.Close()
+	response.Body.Close()
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
+	var data interface{}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		log.Panic("Error unmarshelling json data: ", err)
+	}
 
-	json.Unmarshal(body, result)
-	return string(result)
-
+	return data
 }
 
 type RestData struct {
-	url           string
-	entity        map[string]string
-	relationships map[string]string
-	members       map[string]string
+	Url           string
+	Entity        map[string]string
+	Relationships map[string]string
+	Members       map[string]string
 }

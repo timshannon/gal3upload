@@ -33,7 +33,7 @@ func TestConnection(url string) (RestResponse, interface{}) {
 
 	if err != nil {
 		//don't care about some values?
-		fmt.Println("Error unmarshelling json data: ", err)
+		fmt.Println("Error unmarshalling json data: ", err)
 	}
 
 	err = json.Unmarshal(body, &unmarshalled)

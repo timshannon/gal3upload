@@ -6,43 +6,56 @@ import (
 	"strings"
 	"io/ioutil"
 	"json"
-	"fmt"
 )
 
-func TestConnection(url string) (RestResponse, interface{}) {
-	client := new(http.Client)
+type Client struct {
+	Url    string
+	APIKey string
+}
+
+type Album struct {
+	AlbumUrl string
+	Photos   []string
+}
+
+func (gClient *Client) GetMembers(itemId int) []string {
+	hClient := new(http.Client)
 	reader := new(strings.Reader) //TODO: build actual content
-	if url[:1] != "/" {
-		url += "/"
+	if gClient.Url == "" {
+		log.Panic("No url defined for this gallery Client. " +
+			"Be sure to set .Url before connectiong.")
 	}
-	req, _ := http.NewRequest("GET", url+"rest/item/1", reader)
+	if gClient.Url[:1] != "/" {
+		gClient.Url += "/"
+	}
+	req, _ := http.NewRequest("GET", gClient.Url+"rest/item/"+string(itemId), reader)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
-	req.Header.Set("X-Gallery-Request-Key", "79daf60695177e16ff2480f8338b5fcc")
-	response, err := client.Do(req)
+	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
+	response, err := hClient.Do(req)
 	if err != nil {
-		log.Panic("Error connecting to: "+url+" Error: ", err)
+		log.Panic("Error connecting to: "+gClient.Url+" Error: ", err)
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
+
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
-	var data RestResponse
-	var unmarshalled interface{}
+
+	var data interface{}
 	err = json.Unmarshal(body, &data)
 
 	if err != nil {
 		//don't care about some values?
-		fmt.Println("Error unmarshalling json data: ", err)
+		log.Println("Error unmarshalling json data: ", err)
 	}
+	allData := data.(map[string]interface{})
+	m := allData["members"].([]interface{})
 
-	err = json.Unmarshal(body, &unmarshalled)
-	return data, unmarshalled
-}
+	var members []string
+	for i := range m {
+		members = append(members, m[i].(string))
+	}
+	return members
 
-type RestResponse struct {
-	Url           string
-	Entity        map[string]string
-	Relationships map[string]string
-	Members       []string
 }

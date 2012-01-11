@@ -6,9 +6,10 @@ import (
 )
 
 func TestRest(t *testing.T) {
-	response, unmarshalled := TestConnection("http://www.timandmeg.net/gallery3/index.php")
-	fmt.Println("Members:")
-	fmt.Println(response.Members)
-	fmt.Println("Unmarshalled:")
-	fmt.Println(unmarshalled)
+	client := new(Client)
+	client.Url = "http://www.timandmeg.net/gallery3/index.php"
+	client.APIKey = "79daf60695177e16ff2480f8338b5fcc"
+
+	members := client.GetMembers(1)
+	fmt.Println("Members: ", members)
 }

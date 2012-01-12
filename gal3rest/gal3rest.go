@@ -6,6 +6,7 @@ import (
 	"strings"
 	"io/ioutil"
 	"json"
+	"strconv"
 )
 
 type Client struct {
@@ -35,7 +36,7 @@ func (gClient *Client) GetMembers(itemId int) []string {
 	if gClient.Url[:1] != "/" {
 		gClient.Url += "/"
 	}
-	reqUrl := gClient.Url + "rest/item/" + itemId + "/"
+	reqUrl := gClient.Url + "rest/item/" + strconv.Itoa(itemId) + "/"
 	log.Println(reqUrl)
 	req, _ := http.NewRequest("GET", reqUrl, reader)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
@@ -46,7 +47,6 @@ func (gClient *Client) GetMembers(itemId int) []string {
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-	log.Println(body)
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}

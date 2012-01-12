@@ -13,6 +13,13 @@ type Client struct {
 	APIKey string
 }
 
+type RestData struct {
+	Url           string
+	Entity        map[string]interface{}
+	Members       []interface{}
+	Relationships map[string]interface{}
+}
+
 type Album struct {
 	AlbumUrl string
 	Photos   []string
@@ -28,7 +35,9 @@ func (gClient *Client) GetMembers(itemId int) []string {
 	if gClient.Url[:1] != "/" {
 		gClient.Url += "/"
 	}
-	req, _ := http.NewRequest("GET", gClient.Url+"rest/item/"+string(itemId), reader)
+	reqUrl := gClient.Url + "rest/item/" + itemId + "/"
+	log.Println(reqUrl)
+	req, _ := http.NewRequest("GET", reqUrl, reader)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
 	response, err := hClient.Do(req)
@@ -37,24 +46,26 @@ func (gClient *Client) GetMembers(itemId int) []string {
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-
+	log.Println(body)
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
 
-	var data interface{}
-	err = json.Unmarshal(body, &data)
+	//var data interface{}
+	data := new(RestData)
 
+	err = json.Unmarshal(body, &data)
+	log.Println(data)
 	if err != nil {
 		//don't care about some values?
 		log.Println("Error unmarshalling json data: ", err)
 	}
-	allData := data.(map[string]interface{})
-	m := allData["members"].([]interface{})
+	//allData := data.(map[string]interface{})
+	//m := allData["members"].([]interface{})
 
 	var members []string
-	for i := range m {
-		members = append(members, m[i].(string))
+	for i := range data.Members {
+		members = append(members, data.Members[i].(string))
 	}
 	return members
 

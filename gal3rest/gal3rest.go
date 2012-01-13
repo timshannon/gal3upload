@@ -54,17 +54,24 @@ type Entity struct {
 }
 
 type Album struct {
-	AlbumUrl string
-	Album    []Album
-	Photos   []string
+	Url    string
+	Entity Entity
+	Album  []Album
+	Photos []Photo
+}
+
+type Photo struct {
+	Url       string
+	Entity    Entity
+	imageData []byte
 }
 
 func (gClient *Client) GetRESTItem(itemUrl string) *RestData {
 	hClient := new(http.Client)
 	reader := new(strings.Reader) //TODO: build actual content
-	if gClient.Url == "" {
-		log.Panic("No url defined for this gallery Client. " +
-			"Be sure to set .Url before connectiong.")
+	if gClient.Url == "" || gClient.APIKey == "" {
+		log.Panic("No url or rest api key defined for this gallery Client. " +
+			"Be sure to set .Url and api key before connectiong.")
 	}
 	if gClient.Url[:1] != "/" {
 		gClient.Url += "/"
@@ -95,4 +102,8 @@ func (r *RestData) GetMembers() []string {
 		members[i] = r.Members[i].(string)
 	}
 	return members
+}
+
+func (gClient *Client) GetAll() Album {
+	//Get all albums for the entire site
 }

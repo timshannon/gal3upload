@@ -3,7 +3,6 @@ package gal3rest
 import (
 	"fmt"
 	"testing"
-	"strconv"
 )
 
 func TestRest(t *testing.T) {
@@ -15,8 +14,7 @@ func TestRest(t *testing.T) {
 }
 
 func printMembers(client *Client, id int) {
-	url := client.Url + "/rest/item/" + strconv.Itoa(id)
-	data := client.GetRESTItem(url)
+	data := client.GetRESTItem(id)
 	members := data.GetMembers()
 	fmt.Println(members)
 	for m := range members {

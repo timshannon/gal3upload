@@ -55,29 +55,30 @@ type Entity struct {
 }
 
 type Album struct {
-	Url    string
-	Entity Entity
-	Album  []Album
-	Photos []Photo
+	Entity
+	Photos []*Photo
+	Albums []int
 }
+
+const (
+	PHOTO = "photo"
+	ALBUM = "album"
+)
 
 type Photo struct {
-	Url       string
-	Entity    Entity
-	imageData []byte
+	Entity
+	ImageData []byte
 }
 
-func (gClient *Client) GetRESTItem(item int) *RestData {
+func (gClient *Client) GetRESTItem(itemUrl string) *RestData {
 	hClient := new(http.Client)
-	reader := new(strings.Reader) //TODO: build actual content
-
-	gClient.checkClient()
-	req, _ := http.NewRequest("GET", gClient.Url+"rest/item/"+strconv.Itoa(item), reader)
+	reader := new(strings.Reader)
+	req, _ := http.NewRequest("GET", itemUrl, reader)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
 	response, err := hClient.Do(req)
 	if err != nil {
-		log.Panic("Error connecting to: "+gClient.Url+" Error: ", err)
+		log.Panic("Error connecting to: "+itemUrl+" Error: ", err)
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
@@ -115,19 +116,29 @@ func (gClient *Client) checkClient() {
 	}
 }
 
-func (gClient *Client) GetAll() *Album {
-	//Get all albums for the entire site
-	//Item 1 is the root of gallery
-
-
-	root := gClient.GetAlbum(1)
-	return root
+func (gClient *Client) GetUrlFromId(id int) string {
+	gClient.checkClient()
+	return gClient.Url + "rest/item/" + strconv.Itoa(id)
 }
 
-func (gClient *Client) GetAlbum(albumId int) *Album {
-	data := gClient.GetRESTItem(albumId)
+func (gClient *Client) GetAlbum(id int) *Album {
+	data := gClient.GetRESTItem(gClient.GetUrlFromId(id))
 	album := new(Album)
 	album.Entity = data.Entity
+
+	members := data.GetMembers()
+
+	for i := range members {
+		data = gClient.GetRESTItem(members[i])
+		if data.Entity.Type == PHOTO {
+			photo := new(Photo)
+			photo.Entity = data.Entity
+			album.Photos = append(album.Photos, photo)
+		} else if data.Entity.Type == ALBUM {
+			album.Albums = append(album.Albums, data.Entity.Id)
+		}
+
+	}
 
 	return album
 }

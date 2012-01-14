@@ -57,7 +57,7 @@ type Entity struct {
 type Album struct {
 	Entity
 	Photos []*Photo
-	Albums []int
+	Albums []string
 }
 
 const (
@@ -121,8 +121,8 @@ func (gClient *Client) GetUrlFromId(id int) string {
 	return gClient.Url + "rest/item/" + strconv.Itoa(id)
 }
 
-func (gClient *Client) GetAlbum(id int) *Album {
-	data := gClient.GetRESTItem(gClient.GetUrlFromId(id))
+func (gClient *Client) GetAlbum(itemUrl string) *Album {
+	data := gClient.GetRESTItem(itemUrl)
 	album := new(Album)
 	album.Entity = data.Entity
 
@@ -135,7 +135,7 @@ func (gClient *Client) GetAlbum(id int) *Album {
 			photo.Entity = data.Entity
 			album.Photos = append(album.Photos, photo)
 		} else if data.Entity.Type == ALBUM {
-			album.Albums = append(album.Albums, data.Entity.Id)
+			album.Albums = append(album.Albums, members[i])
 		}
 
 	}

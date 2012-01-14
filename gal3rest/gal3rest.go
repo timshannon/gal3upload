@@ -5,6 +5,7 @@ import (
 	"http"
 	"strings"
 	"io/ioutil"
+	"strconv"
 	"json"
 )
 
@@ -66,17 +67,12 @@ type Photo struct {
 	imageData []byte
 }
 
-func (gClient *Client) GetRESTItem(itemUrl string) *RestData {
+func (gClient *Client) GetRESTItem(item int) *RestData {
 	hClient := new(http.Client)
 	reader := new(strings.Reader) //TODO: build actual content
-	if gClient.Url == "" || gClient.APIKey == "" {
-		log.Panic("No url or rest api key defined for this gallery Client. " +
-			"Be sure to set .Url and api key before connectiong.")
-	}
-	if gClient.Url[:1] != "/" {
-		gClient.Url += "/"
-	}
-	req, _ := http.NewRequest("GET", itemUrl, reader)
+
+	gClient.checkClient()
+	req, _ := http.NewRequest("GET", gClient.Url+"rest/item/"+strconv.Itoa(item), reader)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
 	response, err := hClient.Do(req)
@@ -104,6 +100,34 @@ func (r *RestData) GetMembers() []string {
 	return members
 }
 
-func (gClient *Client) GetAll() Album {
+func (gClient *Client) checkClient() {
+	if gClient.Url == "" {
+		log.Panicf("No URL specified in the client." +
+			" Be sure to specify the REST url before making a request")
+	} else {
+		if gClient.Url[:1] != "/" {
+			gClient.Url += "/"
+		}
+	}
+	if gClient.APIKey == "" {
+		log.Panicln("No API key specified in the client. " +
+			"Be sure to specify the REST API key before making a request.")
+	}
+}
+
+func (gClient *Client) GetAll() *Album {
 	//Get all albums for the entire site
+	//Item 1 is the root of gallery
+
+
+	root := gClient.GetAlbum(1)
+	return root
+}
+
+func (gClient *Client) GetAlbum(albumId int) *Album {
+	data := gClient.GetRESTItem(albumId)
+	album := new(Album)
+	album.Entity = data.Entity
+
+	return album
 }

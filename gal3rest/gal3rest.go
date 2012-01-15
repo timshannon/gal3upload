@@ -21,6 +21,12 @@ type RestData struct {
 	Relationships map[string]interface{}
 }
 
+type RestCreate struct {
+	Name  string
+	Type  string
+	Title string
+}
+
 type Entity struct {
 	Id               int
 	Description      string
@@ -70,6 +76,12 @@ type Photo struct {
 	ImageData []byte
 }
 
+func NewClient(url string, apiKey string) Client {
+	client := Client{Url: url, APIKey: apiKey}
+	client.checkClient()
+
+	return client
+}
 func (gClient *Client) GetRESTItem(itemUrl string) *RestData {
 	hClient := new(http.Client)
 	reader := new(strings.Reader)
@@ -141,4 +153,37 @@ func (gClient *Client) GetAlbum(itemUrl string) *Album {
 	}
 
 	return album
+}
+
+func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) {
+	gClient.checkClient()
+	hClient := new(http.Client)
+	reader := new(strings.Reader)
+
+	c := RestCreate{Name: name, Title: title, Type: ALBUM}
+	b, jErr := json.MarshalForHTML(c)
+	if jErr != nil {
+		log.Panicln("Error marshalling Rest create: ", jErr)
+	}
+	_, rErr := reader.Read(b)
+	if rErr != nil {
+		log.Panicln("Error reading marshalled data: ", rErr)
+	}
+	req, _ := http.NewRequest("POST", parentUrl, reader)
+	req.Header.Set("X-Gallery-Request-Method", "POST")
+	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
+	response, err := hClient.Do(req)
+	if err != nil {
+		log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
+	}
+	body, err := ioutil.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		log.Panic("Error reading response: ", err)
+	}
+
+	data := new(RestData)
+
+	json.Unmarshal(body, &data)
+
 }

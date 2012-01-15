@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"strconv"
 	"json"
+	"os"
 )
 
 type Client struct {
@@ -17,7 +18,7 @@ type Client struct {
 type RestData struct {
 	Url           string
 	Entity        Entity
-	Members       []interface{}
+	Members       []string
 	Relationships map[string]interface{}
 }
 
@@ -105,14 +106,6 @@ func (gClient *Client) GetRESTItem(itemUrl string) *RestData {
 	return data
 }
 
-func (r *RestData) GetMembers() []string {
-	members := make([]string, len(r.Members))
-	for i := range r.Members {
-		members[i] = r.Members[i].(string)
-	}
-	return members
-}
-
 func (gClient *Client) checkClient() {
 	if gClient.Url == "" {
 		log.Panicf("No URL specified in the client." +
@@ -137,21 +130,18 @@ func (gClient *Client) GetAlbum(itemUrl string) *Album {
 	data := gClient.GetRESTItem(itemUrl)
 	album := new(Album)
 	album.Entity = data.Entity
-
-	members := data.GetMembers()
-
-	for i := range members {
-		data = gClient.GetRESTItem(members[i])
-		if data.Entity.Type == PHOTO {
+	log.Println("len", len(data.Members))
+	for i := range data.Members {
+		log.Println(i)
+		mData := gClient.GetRESTItem(data.Members[i])
+		if mData.Entity.Type == PHOTO {
 			photo := new(Photo)
-			photo.Entity = data.Entity
+			photo.Entity = mData.Entity
 			album.Photos = append(album.Photos, photo)
-		} else if data.Entity.Type == ALBUM {
-			album.Albums = append(album.Albums, members[i])
+		} else if mData.Entity.Type == ALBUM {
+			album.Albums = append(album.Albums, data.Members[i])
 		}
-
 	}
-
 	return album
 }
 
@@ -161,13 +151,16 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 	reader := new(strings.Reader)
 
 	c := RestCreate{Name: name, Title: title, Type: ALBUM}
-	b, jErr := json.MarshalForHTML(c)
+	b, jErr := json.Marshal(c)
 	if jErr != nil {
 		log.Panicln("Error marshalling Rest create: ", jErr)
 	}
+
 	_, rErr := reader.Read(b)
 	if rErr != nil {
-		log.Panicln("Error reading marshalled data: ", rErr)
+		if rErr != os.EOF {
+			log.Panicln("Error reading marshalled data: ", rErr)
+		}
 	}
 	req, _ := http.NewRequest("POST", parentUrl, reader)
 	req.Header.Set("X-Gallery-Request-Method", "POST")
@@ -176,14 +169,10 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 	if err != nil {
 		log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
 	}
-	body, err := ioutil.ReadAll(response.Body)
+	_, err = ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
-
-	data := new(RestData)
-
-	json.Unmarshal(body, &data)
 
 }

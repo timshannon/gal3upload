@@ -3,11 +3,11 @@ package gal3rest
 import (
 	"log"
 	"http"
-	"strings"
 	"io/ioutil"
 	"strconv"
 	"json"
-	"os"
+	"bytes"
+	"url"
 )
 
 type Client struct {
@@ -19,7 +19,7 @@ type RestData struct {
 	Url           string
 	Entity        Entity
 	Members       []string
-	Relationships map[string]interface{}
+	Relationships map[string]interface{} // may type this later
 }
 
 type RestCreate struct {
@@ -85,8 +85,7 @@ func NewClient(url string, apiKey string) Client {
 }
 func (gClient *Client) GetRESTItem(itemUrl string) *RestData {
 	hClient := new(http.Client)
-	reader := new(strings.Reader)
-	req, _ := http.NewRequest("GET", itemUrl, reader)
+	req, _ := http.NewRequest("GET", itemUrl, nil)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
 	response, err := hClient.Do(req)
@@ -130,9 +129,7 @@ func (gClient *Client) GetAlbum(itemUrl string) *Album {
 	data := gClient.GetRESTItem(itemUrl)
 	album := new(Album)
 	album.Entity = data.Entity
-	log.Println("len", len(data.Members))
 	for i := range data.Members {
-		log.Println(i)
 		mData := gClient.GetRESTItem(data.Members[i])
 		if mData.Entity.Type == PHOTO {
 			photo := new(Photo)
@@ -148,7 +145,6 @@ func (gClient *Client) GetAlbum(itemUrl string) *Album {
 func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) {
 	gClient.checkClient()
 	hClient := new(http.Client)
-	reader := new(strings.Reader)
 
 	c := RestCreate{Name: name, Title: title, Type: ALBUM}
 	b, jErr := json.Marshal(c)
@@ -156,15 +152,18 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 		log.Panicln("Error marshalling Rest create: ", jErr)
 	}
 
-	_, rErr := reader.Read(b)
-	if rErr != nil {
-		if rErr != os.EOF {
-			log.Panicln("Error reading marshalled data: ", rErr)
-		}
-	}
-	req, _ := http.NewRequest("POST", parentUrl, reader)
+	//base64.URLEncoding.EncodeToString	
+	encodedValue := "entity=" + url.QueryEscape(string(b))
+
+	buffer := bytes.NewBuffer([]byte(encodedValue))
+
+	req, _ := http.NewRequest("POST", parentUrl, buffer)
 	req.Header.Set("X-Gallery-Request-Method", "POST")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Length", strconv.Itoa(len(b)))
+
+	log.Println("request: ", req)
 	response, err := hClient.Do(req)
 	if err != nil {
 		log.Panic("Error connecting to: "+parentUrl+" Error: ", err)

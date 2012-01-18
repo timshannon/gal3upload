@@ -18,7 +18,7 @@ func TestRest(t *testing.T) {
 	}
 
 	fmt.Println("Creating a new album")
-	client.CreateAlbum("Test Album", "Test Album",
+	client.CreateAlbum("This is my Sample Album", "Sample Album",
 		client.GetUrlFromId(1))
 }
 

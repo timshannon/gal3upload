@@ -23,8 +23,8 @@ type RestData struct {
 }
 
 type RestCreate struct {
-	Name  string
 	Type  string
+	Name  string
 	Title string
 }
 
@@ -161,7 +161,7 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 	req.Header.Set("X-Gallery-Request-Method", "POST")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Content-Length", strconv.Itoa(len(b)))
+	req.Header.Set("Content-Length", strconv.Itoa(len(encodedValue)))
 
 	log.Println("request: ", req)
 	response, err := hClient.Do(req)

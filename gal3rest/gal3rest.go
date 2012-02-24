@@ -1,13 +1,13 @@
 package gal3rest
 
 import (
-	"log"
-	"http"
-	"io/ioutil"
-	"strconv"
-	"json"
 	"bytes"
-	"url"
+	"encoding/json"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"net/url"
+	"strconv"
 )
 
 type Client struct {
@@ -19,7 +19,7 @@ type RestData struct {
 	Url           string
 	Entity        Entity
 	Members       []string
-	Relationships map[string]interface{} // may type this later
+	Relationships map[string]interface{} // may Type this later
 }
 
 type RestCreate struct {

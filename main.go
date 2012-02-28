@@ -21,7 +21,6 @@ func init() {
 }
 func main() {
 	//check flags
-	//check config file
 	if url == "" {
 		fmt.Println("No URL specified with -u")
 		return

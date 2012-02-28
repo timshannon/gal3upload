@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bufio"
 	"code.google.com/p/gal3upload/gal3rest"
 	"flag"
 	"fmt"
-	"os"
 	"reflect"
 )
 
@@ -24,34 +22,16 @@ func init() {
 func main() {
 	//check flags
 	//check config file
-	ReadConfigFile()
 	if url == "" {
-		fmt.Println("No URL specified with -u or in gal3upload.cfg")
+		fmt.Println("No URL specified with -u")
 		return
 	}
 	if apiKey == "" {
-		fmt.Println("No API key specified with -a or in gal3upload.cfg")
+		fmt.Println("No API key specified with -a")
 		return
 	}
 	if test {
 		TestClient()
-	}
-}
-
-//reads gal3upload.cfg file for setting any of the command
-// line arguments in file 
-func ReadConfigFile() {
-	var lines []string
-	if file, err := os.OpenFile("gal3upload.cfg"), err != nil {
-		return
-	}
-	reader := bufio.NewReader(file)
-	for {
-		if linePart, isPrefix, readErr := reader.ReadLine(), readErr != nil {
-			fmt.Println("Incorrect config file format.")
-			break
-		}
-		append(lines, linePart.String())	
 	}
 }
 

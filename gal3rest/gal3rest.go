@@ -96,7 +96,6 @@ const (
 
 type Photo struct {
 	Entity
-	ImageData []byte
 }
 
 func NewClient(url string, apiKey string) Client {
@@ -185,7 +184,40 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Content-Length", strconv.Itoa(len(encodedValue)))
 
-	log.Println("request: ", req)
+	response, err := hClient.Do(req)
+	if err != nil {
+		log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
+	}
+	_, err = ioutil.ReadAll(response.Body)
+	response.Body.Close()
+	if err != nil {
+		log.Panic("Error reading response: ", err)
+	}
+
+}
+
+func (gClient *Client) UploadImage(title string, name string, imagePath string) {
+	gClient.checkClient()
+	hClient := new(http.Client)
+
+	c := RestCreate{Name: name, Title: title, Type: ALBUM}
+	b, jErr := json.Marshal(c)
+	if jErr != nil {
+		log.Panicln("Error marshalling Rest create: ", jErr)
+	}
+
+	//base64.URLEncoding.EncodeToString	
+	encodedValue := "entity=" + url.QueryEscape(string(b))
+	encodedValue += "file=" + "" //TODO: load image into base64 string
+
+	buffer := bytes.NewBuffer([]byte(encodedValue))
+
+	req, _ := http.NewRequest("POST", parentUrl, buffer)
+	req.Header.Set("X-Gallery-Request-Method", "POST")
+	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Length", strconv.Itoa(len(encodedValue)))
+
 	response, err := hClient.Do(req)
 	if err != nil {
 		log.Panic("Error connecting to: "+parentUrl+" Error: ", err)

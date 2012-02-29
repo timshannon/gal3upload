@@ -41,6 +41,7 @@ func init() {
 }
 func main() {
 	//check flags
+	fmt.Println("verb: ", flag.Arg(0))
 	if url == "" {
 		fmt.Println("No URL specified with -u")
 		return

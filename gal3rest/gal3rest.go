@@ -27,9 +27,12 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"mime"
 	"net/http"
 	"net/url"
+	"path"
 	"strconv"
+	"strings"
 )
 
 type Client struct {
@@ -196,27 +199,50 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 
 }
 
-func (gClient *Client) UploadImage(title string, name string, imagePath string) {
+func (gClient *Client) UploadImage(title string, name string, imagePath string, parentUrl string) {
 	gClient.checkClient()
 	hClient := new(http.Client)
 
-	c := RestCreate{Name: name, Title: title, Type: ALBUM}
+	c := RestCreate{Name: name, Title: title, Type: PHOTO}
 	b, jErr := json.Marshal(c)
 	if jErr != nil {
 		log.Panicln("Error marshalling Rest create: ", jErr)
 	}
 
-	//base64.URLEncoding.EncodeToString	
-	encodedValue := "entity=" + url.QueryEscape(string(b))
-	encodedValue += "file=" + "" //TODO: load image into base64 string
+	entity := "entity=" + url.QueryEscape(string(b))
 
-	buffer := bytes.NewBuffer([]byte(encodedValue))
+	file, fErr := ioutil.ReadFile(imagePath)
+	if fErr != nil {
+		log.Panic("Error reading the image file: ", fErr)
+	}
+
+	var dataParts = make([]string, 12)
+	boundry := "roPK9J3DoG4ZWP6etiDuJ97h-zeNAph"
+
+	//build multipart request
+	dataParts[0] = "--" + boundry
+	dataParts[1] = `Content-Disposition: form-data; name="entity"`
+	dataParts[2] = "Content-Type: text/plain; charset=UTF-8"
+	dataParts[3] = "Content-Transfer-Encoding: 8bit"
+	//space in 4
+	dataParts[5] = entity
+	dataParts[6] = "--" + boundry
+	dataParts[7] = `Content-Disposition: form-data; name="file";` +
+		`filename="` + path.Base(imagePath) + `"`
+	dataParts[8] = "Content-Type: " + getContentType(imagePath)
+	dataParts[9] = "Content-Transfer-Encoding: binary"
+	//space in 10
+	dataParts[11] = string(file)
+	dataParts[12] = "--" + boundry
+
+	data := strings.Join(dataParts, "\n")
+	buffer := bytes.NewBuffer([]byte(data))
 
 	req, _ := http.NewRequest("POST", parentUrl, buffer)
 	req.Header.Set("X-Gallery-Request-Method", "POST")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Content-Length", strconv.Itoa(len(encodedValue)))
+	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundry)
+	req.Header.Set("Content-Length", strconv.Itoa(len(data)))
 
 	response, err := hClient.Do(req)
 	if err != nil {
@@ -227,5 +253,15 @@ func (gClient *Client) UploadImage(title string, name string, imagePath string) 
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
+
+}
+
+func getContentType(file string) string {
+	ext := file[strings.LastIndex(file, "."):]
+	mType := mime.TypeByExtension(ext)
+	if mType == "" {
+		return "application/octet-stream"
+	}
+	return mType
 
 }

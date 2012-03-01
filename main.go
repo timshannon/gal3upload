@@ -24,24 +24,28 @@ import (
 	"code.google.com/p/gal3upload/gal3rest"
 	"flag"
 	"fmt"
-	"reflect"
 )
 
 //cmd line flags
 var url string
 var apiKey string
-var test bool
+var list bool
+var parent string
+var recurse bool
+var create string
 
 func init() {
 	//setup command line flags
 	flag.StringVar(&url, "u", "", "url of the gallery")
 	flag.StringVar(&apiKey, "a", "", "API Key of the user of the gallery")
-	flag.BoolVar(&test, "t", false, "Test the connection with the given credentials")
+	flag.BoolVar(&list, "l", false, "List the contents of the gallyer")
+	flag.StringVar(&parent, "p", "", "Set the parent gallery name or ID")
+	flag.BoolVar(&recurse, "r", false, "Recurse the gallery or file system's sub folders")
+	flag.StringVar(&create, "c", "", "Creates a gallery with the given name")
 	flag.Parse()
 }
 func main() {
 	//check flags
-	fmt.Println("verb: ", flag.Arg(0))
 	if url == "" {
 		fmt.Println("No URL specified with -u")
 		return
@@ -50,9 +54,7 @@ func main() {
 		fmt.Println("No API key specified with -a")
 		return
 	}
-	if test {
-		TestClient()
-	}
+
 }
 
 func TestClient() {
@@ -69,15 +71,4 @@ func TestClient() {
 	fmt.Println("Creating a new album")
 	client.CreateAlbum("This is my Sample Album", "Sample Album",
 		client.GetUrlFromId(1))
-}
-
-func PrintEntity(entity *gal3rest.Entity) {
-	ref := reflect.ValueOf(entity).Elem()
-	entityType := ref.Type()
-	for i := 0; i < ref.NumField(); i++ {
-		field := ref.Field(i)
-		fmt.Printf("%s: %s  %v\n",
-			entityType.Field(i).Name,
-			field.Type(), field.Interface())
-	}
 }

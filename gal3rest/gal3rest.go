@@ -25,12 +25,14 @@ package gal3rest
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
 	"net/url"
 	"path"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -196,6 +198,7 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
+	//TODO: Return response
 
 }
 
@@ -253,6 +256,7 @@ func (gClient *Client) UploadImage(title string, name string, imagePath string, 
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
+	//TODO: Return response
 
 }
 
@@ -264,4 +268,15 @@ func getContentType(file string) string {
 	}
 	return mType
 
+}
+
+func PrintEntity(entity Entity) {
+	ref := reflect.ValueOf(entity).Elem()
+	entityType := ref.Type()
+	for i := 0; i < ref.NumField(); i++ {
+		field := ref.Field(i)
+		fmt.Printf("%s: %s  %v\n",
+			entityType.Field(i).Name,
+			field.Type(), field.Interface())
+	}
 }

@@ -133,7 +133,7 @@ func (gClient *Client) GetRESTItem(itemUrl string) *RestData {
 
 func (gClient *Client) checkClient() {
 	if gClient.Url == "" {
-		log.Panicf("No URL specified in the client." +
+		log.Panicln("No URL specified in the client." +
 			" Be sure to specify the REST url before making a request")
 	} else {
 		if gClient.Url[:1] != "/" {
@@ -193,12 +193,13 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 	if err != nil {
 		log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
 	}
+
+	//TODO: Return response
 	_, err = ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
-	//TODO: Return response
 
 }
 
@@ -206,7 +207,7 @@ func (gClient *Client) UploadImage(title string, name string, imagePath string, 
 	gClient.checkClient()
 	hClient := new(http.Client)
 
-	c := RestCreate{Name: name, Title: title, Type: PHOTO}
+	c := &RestCreate{Name: name, Title: title, Type: PHOTO}
 	b, jErr := json.Marshal(c)
 	if jErr != nil {
 		log.Panicln("Error marshalling Rest create: ", jErr)
@@ -219,7 +220,7 @@ func (gClient *Client) UploadImage(title string, name string, imagePath string, 
 		log.Panic("Error reading the image file: ", fErr)
 	}
 
-	var dataParts = make([]string, 12)
+	var dataParts = make([]string, 13)
 	boundry := "roPK9J3DoG4ZWP6etiDuJ97h-zeNAph"
 
 	//build multipart request
@@ -251,12 +252,13 @@ func (gClient *Client) UploadImage(title string, name string, imagePath string, 
 	if err != nil {
 		log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
 	}
+
+	//TODO: Return response
 	_, err = ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
 		log.Panic("Error reading response: ", err)
 	}
-	//TODO: Return response
 
 }
 

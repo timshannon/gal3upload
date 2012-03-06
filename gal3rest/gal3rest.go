@@ -172,7 +172,7 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 	gClient.checkClient()
 	hClient := new(http.Client)
 
-	c := RestCreate{Name: name, Title: title, Type: ALBUM}
+	c := &RestCreate{Name: name, Title: title, Type: ALBUM}
 	b, jErr := json.Marshal(c)
 	if jErr != nil {
 		log.Panicln("Error marshalling Rest create: ", jErr)

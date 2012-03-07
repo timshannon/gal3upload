@@ -37,11 +37,16 @@ import (
 	"strings"
 )
 
+//Client holds the url and API keys for the gallery being used
+// so you don't have to specify the url and api key for each request
+// all gallery access functions are attached to this type
 type Client struct {
 	Url    string
 	APIKey string
 }
 
+//RestData contains the general format of data returned from REST
+// API calls to Gallery3
 type RestData struct {
 	Url           string
 	Entity        Entity
@@ -49,12 +54,16 @@ type RestData struct {
 	Relationships map[string]interface{} // may Type this later
 }
 
+//RestCreate holds the structure for REST API requests to create a new
+// gallery
 type RestCreate struct {
 	Type  string `json:"type"`
 	Name  string `json:"name"`
 	Title string `json:"title"`
 }
 
+//Entity is a general json data structure that is attached to most items
+// in the gallery3 rest api
 type Entity struct {
 	Id               int
 	Description      string
@@ -88,31 +97,40 @@ type Entity struct {
 	Owner_id         int
 }
 
+//Album is the somewhat abstracted type used to hold the relationship
+// between albums and photos, as well as the REST API data associated to them
 type Album struct {
 	Entity
 	Photos []*Photo
 	Albums []string
 }
 
+//entity types
 const (
 	PHOTO = "photo"
 	ALBUM = "album"
 )
 
+//Photo is the abstraction of the REST entity
 type Photo struct {
 	Entity
 }
 
+//Response is the json response from creating an album or uploading a photo
+// it simply contains the REST URL to the item added
 type Response struct {
 	Url string
 }
 
+//Returns a new client for accessing the Galllery3 REST API
 func NewClient(url string, apiKey string) Client {
 	client := Client{Url: url, APIKey: apiKey}
 	client.checkClient()
 
 	return client
 }
+
+//GetRESTItem retrieves an arbitrary REST item from a Gallery3
 func (gClient *Client) GetRESTItem(itemUrl string) (*RestData, error) {
 	hClient := new(http.Client)
 	req, _ := http.NewRequest("GET", itemUrl, nil)
@@ -137,6 +155,7 @@ func (gClient *Client) GetRESTItem(itemUrl string) (*RestData, error) {
 	return data, nil
 }
 
+//checkClient checks to make sure the URL and API is set and configured properly
 func (gClient *Client) checkClient() {
 	if gClient.Url == "" {
 		log.Panicln("No URL specified in the client." +
@@ -152,11 +171,14 @@ func (gClient *Client) checkClient() {
 	}
 }
 
+//GetUrlFromId simply builds the REST url from the passed in ID
 func (gClient *Client) GetUrlFromId(id int) string {
 	gClient.checkClient()
 	return gClient.Url + "rest/item/" + strconv.Itoa(id)
 }
 
+//GetAlbum returns the entity data for an album and all of it's members
+// for the passed in url
 func (gClient *Client) GetAlbum(itemUrl string) (*Album, error) {
 	data, err := gClient.GetRESTItem(itemUrl)
 	if err != nil {
@@ -180,6 +202,8 @@ func (gClient *Client) GetAlbum(itemUrl string) (*Album, error) {
 	return album, nil
 }
 
+//CreateAlbum creates an album with the passed in name and title inside the album at the
+// passed in url
 func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) (string, error) {
 	gClient.checkClient()
 	hClient := new(http.Client)
@@ -217,23 +241,23 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 	return getUrl(rspValue), nil
 }
 
-func (gClient *Client) UploadImage(title string, name string, imagePath string,
-	parentUrl string) (string, error) {
+//Uploads an image to the passed in album url
+func (gClient *Client) UploadImage(title string, imagePath string,
+	parentUrl string) (url string, status string, err error) {
 	gClient.checkClient()
 	hClient := new(http.Client)
 
+	_, name := path.Split(imagePath)
 	c := &RestCreate{Name: name, Title: title, Type: PHOTO}
-	b, err := json.Marshal(c)
+	entity, err := json.Marshal(c)
 	if err != nil {
-		return "", err
+		return
 		//log.Panicln("Error marshalling Rest create: ", jErr)
 	}
 
-	entity := "entity=" + url.QueryEscape(string(b))
-
 	file, err := ioutil.ReadFile(imagePath)
 	if err != nil {
-		return "", err
+		return url, status, err
 		//	log.Panic("Error reading the image file: ", fErr)
 	}
 
@@ -246,7 +270,7 @@ func (gClient *Client) UploadImage(title string, name string, imagePath string,
 	dataParts[2] = "Content-Type: text/plain; charset=UTF-8"
 	dataParts[3] = "Content-Transfer-Encoding: 8bit"
 	//space in 4
-	dataParts[5] = entity
+	dataParts[5] = string(entity)
 	dataParts[6] = "--" + boundry
 	dataParts[7] = `Content-Disposition: form-data; name="file";` +
 		`filename="` + path.Base(imagePath) + `"`
@@ -258,32 +282,36 @@ func (gClient *Client) UploadImage(title string, name string, imagePath string,
 
 	data := strings.Join(dataParts, "\n")
 	buffer := bytes.NewBuffer([]byte(data))
-
 	req, err := http.NewRequest("POST", parentUrl, buffer)
 	if err != nil {
-		return "", err
+		return
 	}
 	req.Header.Set("X-Gallery-Request-Method", "POST")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
 	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundry)
 	req.Header.Set("Content-Length", strconv.Itoa(len(data)))
 
+	//fmt.Println("request: ", req)
 	response, err := hClient.Do(req)
 	if err != nil {
-		return "", err
+		return
 		//	log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
 	}
 
 	rspValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return "", err
+		return
 	}
 	response.Body.Close()
-	return getUrl(rspValue), nil
+	url = getUrl(rspValue)
+	status = response.Status
+	err = nil
+	return
 }
 
+//Returns the proper mime type for the passed in file
 func getContentType(file string) string {
-	ext := file[strings.LastIndex(file, "."):]
+	ext := path.Ext(file)
 	mType := mime.TypeByExtension(ext)
 	if mType == "" {
 		return "application/octet-stream"
@@ -291,15 +319,18 @@ func getContentType(file string) string {
 	return mType
 }
 
-func PrintEntity(entity Entity) {
+//String function for pretty printing the entity REST  data
+func (entity *Entity) String() string {
+	strValue := ""
 	ref := reflect.ValueOf(entity).Elem()
 	entityType := ref.Type()
 	for i := 0; i < ref.NumField(); i++ {
 		field := ref.Field(i)
-		fmt.Printf("%s: %s  %v\n",
+		strValue += fmt.Sprint("%s: %s  %v\n",
 			entityType.Field(i).Name,
 			field.Type(), field.Interface())
 	}
+	return strValue
 }
 
 //Pull URL out of rest response

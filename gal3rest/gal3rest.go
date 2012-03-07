@@ -103,32 +103,38 @@ type Photo struct {
 	Entity
 }
 
+type Response struct {
+	Url string
+}
+
 func NewClient(url string, apiKey string) Client {
 	client := Client{Url: url, APIKey: apiKey}
 	client.checkClient()
 
 	return client
 }
-func (gClient *Client) GetRESTItem(itemUrl string) *RestData {
+func (gClient *Client) GetRESTItem(itemUrl string) (*RestData, error) {
 	hClient := new(http.Client)
 	req, _ := http.NewRequest("GET", itemUrl, nil)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
 	response, err := hClient.Do(req)
 	if err != nil {
-		log.Panic("Error connecting to: "+itemUrl+" Error: ", err)
+		return nil, err
+		//	log.Panic("Error connecting to: "+itemUrl+" Error: ", err)
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
-		log.Panic("Error reading response: ", err)
+		return nil, err
+		//log.Panic("Error reading response: ", err)
 	}
 
 	data := new(RestData)
 
 	json.Unmarshal(body, &data)
 
-	return data
+	return data, nil
 }
 
 func (gClient *Client) checkClient() {
@@ -151,12 +157,18 @@ func (gClient *Client) GetUrlFromId(id int) string {
 	return gClient.Url + "rest/item/" + strconv.Itoa(id)
 }
 
-func (gClient *Client) GetAlbum(itemUrl string) *Album {
-	data := gClient.GetRESTItem(itemUrl)
+func (gClient *Client) GetAlbum(itemUrl string) (*Album, error) {
+	data, err := gClient.GetRESTItem(itemUrl)
+	if err != nil {
+		return nil, err
+	}
 	album := new(Album)
 	album.Entity = data.Entity
 	for i := range data.Members {
-		mData := gClient.GetRESTItem(data.Members[i])
+		mData, err := gClient.GetRESTItem(data.Members[i])
+		if err != nil {
+			return nil, err
+		}
 		if mData.Entity.Type == PHOTO {
 			photo := new(Photo)
 			photo.Entity = mData.Entity
@@ -165,17 +177,18 @@ func (gClient *Client) GetAlbum(itemUrl string) *Album {
 			album.Albums = append(album.Albums, data.Members[i])
 		}
 	}
-	return album
+	return album, nil
 }
 
-func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) {
+func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) (string, error) {
 	gClient.checkClient()
 	hClient := new(http.Client)
 
 	c := &RestCreate{Name: name, Title: title, Type: ALBUM}
-	b, jErr := json.Marshal(c)
-	if jErr != nil {
-		log.Panicln("Error marshalling Rest create: ", jErr)
+	b, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+		//		log.Panicln("Error marshalling Rest create: ", jErr)
 	}
 
 	//base64.URLEncoding.EncodeToString	
@@ -191,33 +204,37 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 
 	response, err := hClient.Do(req)
 	if err != nil {
-		log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
+		return "", err
+		//log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
 	}
 
-	//TODO: Return response
-	_, err = ioutil.ReadAll(response.Body)
-	response.Body.Close()
+	rspValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Panic("Error reading response: ", err)
+		return "", err
+		//log.Panic("Error reading response: ", err)
 	}
-
+	response.Body.Close()
+	return getUrl(rspValue), nil
 }
 
-func (gClient *Client) UploadImage(title string, name string, imagePath string, parentUrl string) {
+func (gClient *Client) UploadImage(title string, name string, imagePath string,
+	parentUrl string) (string, error) {
 	gClient.checkClient()
 	hClient := new(http.Client)
 
 	c := &RestCreate{Name: name, Title: title, Type: PHOTO}
-	b, jErr := json.Marshal(c)
-	if jErr != nil {
-		log.Panicln("Error marshalling Rest create: ", jErr)
+	b, err := json.Marshal(c)
+	if err != nil {
+		return "", err
+		//log.Panicln("Error marshalling Rest create: ", jErr)
 	}
 
 	entity := "entity=" + url.QueryEscape(string(b))
 
-	file, fErr := ioutil.ReadFile(imagePath)
-	if fErr != nil {
-		log.Panic("Error reading the image file: ", fErr)
+	file, err := ioutil.ReadFile(imagePath)
+	if err != nil {
+		return "", err
+		//	log.Panic("Error reading the image file: ", fErr)
 	}
 
 	var dataParts = make([]string, 13)
@@ -242,7 +259,10 @@ func (gClient *Client) UploadImage(title string, name string, imagePath string, 
 	data := strings.Join(dataParts, "\n")
 	buffer := bytes.NewBuffer([]byte(data))
 
-	req, _ := http.NewRequest("POST", parentUrl, buffer)
+	req, err := http.NewRequest("POST", parentUrl, buffer)
+	if err != nil {
+		return "", err
+	}
 	req.Header.Set("X-Gallery-Request-Method", "POST")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
 	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundry)
@@ -250,16 +270,16 @@ func (gClient *Client) UploadImage(title string, name string, imagePath string, 
 
 	response, err := hClient.Do(req)
 	if err != nil {
-		log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
+		return "", err
+		//	log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
 	}
 
-	//TODO: Return response
-	_, err = ioutil.ReadAll(response.Body)
-	response.Body.Close()
+	rspValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		log.Panic("Error reading response: ", err)
+		return "", err
 	}
-
+	response.Body.Close()
+	return getUrl(rspValue), nil
 }
 
 func getContentType(file string) string {
@@ -269,7 +289,6 @@ func getContentType(file string) string {
 		return "application/octet-stream"
 	}
 	return mType
-
 }
 
 func PrintEntity(entity Entity) {
@@ -281,4 +300,11 @@ func PrintEntity(entity Entity) {
 			entityType.Field(i).Name,
 			field.Type(), field.Interface())
 	}
+}
+
+//Pull URL out of rest response
+func getUrl(data []byte) string {
+	response := new(Response)
+	json.Unmarshal(data, &response)
+	return response.Url
 }

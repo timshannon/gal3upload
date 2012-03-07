@@ -21,7 +21,7 @@
 package main
 
 import (
-	"code.google.com/p/gal3upload/gal3rest"
+	//	"code.google.com/p/gal3upload/gal3rest"
 	"flag"
 	"fmt"
 )
@@ -56,20 +56,4 @@ func main() {
 		return
 	}
 
-}
-
-func TestClient() {
-	client := gal3rest.NewClient(url,
-		apiKey)
-
-	album := client.GetAlbum(client.GetUrlFromId(1))
-	fmt.Println("Number of Photos: ", len(album.Photos))
-	fmt.Println("Number of Albums: ", len(album.Albums))
-	for i := range album.Albums {
-		fmt.Println("Album: ", album.Albums[i])
-	}
-
-	fmt.Println("Creating a new album")
-	client.CreateAlbum("This is my Sample Album", "Sample Album",
-		client.GetUrlFromId(1))
 }

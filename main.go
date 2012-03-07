@@ -21,7 +21,7 @@
 package main
 
 import (
-	//	"code.google.com/p/gal3upload/gal3rest"
+	"code.google.com/p/gal3upload/gal3rest"
 	"flag"
 	"fmt"
 )
@@ -55,5 +55,9 @@ func main() {
 		fmt.Println("No API key specified with -a")
 		return
 	}
-
+	client := gal3rest.NewClient(url, apiKey)
+	if parent == "" {
+		parent = "1"
+	}
+	fmt.Println(client)
 }

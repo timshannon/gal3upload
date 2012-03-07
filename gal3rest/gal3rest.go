@@ -131,28 +131,26 @@ func NewClient(url string, apiKey string) Client {
 }
 
 //GetRESTItem retrieves an arbitrary REST item from a Gallery3
-func (gClient *Client) GetRESTItem(itemUrl string) (*RestData, error) {
+func (gClient *Client) GetRESTItem(itemUrl string) (restData *RestData, status int, err error) {
 	hClient := new(http.Client)
 	req, _ := http.NewRequest("GET", itemUrl, nil)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
 	response, err := hClient.Do(req)
 	if err != nil {
-		return nil, err
+		return
 		//	log.Panic("Error connecting to: "+itemUrl+" Error: ", err)
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
-		return nil, err
+		return
 		//log.Panic("Error reading response: ", err)
 	}
 
-	data := new(RestData)
-
-	json.Unmarshal(body, &data)
-
-	return data, nil
+	json.Unmarshal(body, &restData)
+	status = response.StatusCode
+	return
 }
 
 //checkClient checks to make sure the URL and API is set and configured properly
@@ -179,17 +177,16 @@ func (gClient *Client) GetUrlFromId(id int) string {
 
 //GetAlbum returns the entity data for an album and all of it's members
 // for the passed in url
-func (gClient *Client) GetAlbum(itemUrl string) (*Album, error) {
-	data, err := gClient.GetRESTItem(itemUrl)
-	if err != nil {
-		return nil, err
+func (gClient *Client) GetAlbum(itemUrl string) (album *Album, status int, err error) {
+	data, status, err := gClient.GetRESTItem(itemUrl)
+	if err != nil || status != 200 {
+		return nil, status, err
 	}
-	album := new(Album)
 	album.Entity = data.Entity
 	for i := range data.Members {
-		mData, err := gClient.GetRESTItem(data.Members[i])
-		if err != nil {
-			return nil, err
+		mData, status, err := gClient.GetRESTItem(data.Members[i])
+		if err != nil || status != 200 {
+			return nil, status, err
 		}
 		if mData.Entity.Type == PHOTO {
 			photo := new(Photo)
@@ -199,19 +196,19 @@ func (gClient *Client) GetAlbum(itemUrl string) (*Album, error) {
 			album.Albums = append(album.Albums, data.Members[i])
 		}
 	}
-	return album, nil
+	return
 }
 
 //CreateAlbum creates an album with the passed in name and title inside the album at the
 // passed in url
-func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) (string, error) {
+func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) (itemUrl string, status int, err error) {
 	gClient.checkClient()
 	hClient := new(http.Client)
 
 	c := &RestCreate{Name: name, Title: title, Type: ALBUM}
 	b, err := json.Marshal(c)
 	if err != nil {
-		return "", err
+		return
 		//		log.Panicln("Error marshalling Rest create: ", jErr)
 	}
 
@@ -228,17 +225,19 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 
 	response, err := hClient.Do(req)
 	if err != nil {
-		return "", err
+		return
 		//log.Panic("Error connecting to: "+parentUrl+" Error: ", err)
 	}
 
 	rspValue, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return "", err
+		return
 		//log.Panic("Error reading response: ", err)
 	}
 	response.Body.Close()
-	return getUrl(rspValue), nil
+	itemUrl = getUrl(rspValue)
+	status = response.StatusCode
+	return
 }
 
 //Uploads an image to the passed in album url

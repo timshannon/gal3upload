@@ -97,12 +97,26 @@ type Entity struct {
 	Owner_id         int
 }
 
+//String function for pretty printing the entity REST  data
+func (entity *Entity) String() string {
+	var strValue string
+	ref := reflect.ValueOf(entity).Elem()
+	entityType := ref.Type()
+	for i := 0; i < ref.NumField(); i++ {
+		field := ref.Field(i)
+		strValue += fmt.Sprintf("%s: %s  %v\n",
+			entityType.Field(i).Name,
+			field.Type(), field.Interface())
+	}
+	return strValue
+}
+
 //Album is the somewhat abstracted type used to hold the relationship
 // between albums and photos, as well as the REST API data associated to them
 type Album struct {
 	Entity
 	Photos []*Photo
-	Albums []string
+	Albums []*Album
 }
 
 //entity types
@@ -131,11 +145,28 @@ func NewClient(url string, apiKey string) Client {
 }
 
 //GetRESTItem retrieves an arbitrary REST item from a Gallery3
-func (gClient *Client) GetRESTItem(itemUrl string) (restData *RestData, status int, err error) {
+// Possible key value parameters:
+// scope: direct - only specific item
+//	  all - All descendants (recursive)
+// name: value - only return items containing value 
+// random: true - returns a single random item
+// type: photo
+//       movie
+//       album
+func (gClient *Client) GetRESTItem(itemUrl string,
+	parameters map[string]string) (restData *RestData, status int, err error) {
+	restData = new(RestData)
 	hClient := new(http.Client)
+	urlValues := url.Values{}
+	for k, v := range parameters {
+		urlValues.Set(k, v)
+	}
+	itemUrl += "?" + urlValues.Encode()
+
 	req, _ := http.NewRequest("GET", itemUrl, nil)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
+	fmt.Println("request: ", req)
 	response, err := hClient.Do(req)
 	if err != nil {
 		return
@@ -170,21 +201,22 @@ func (gClient *Client) checkClient() {
 }
 
 //GetUrlFromId simply builds the REST url from the passed in ID
-func (gClient *Client) GetUrlFromId(id int) string {
+func (gClient *Client) GetUrlFromId(id string) string {
 	gClient.checkClient()
-	return gClient.Url + "rest/item/" + strconv.Itoa(id)
+	return gClient.Url + "rest/item/" + id
 }
 
 //GetAlbum returns the entity data for an album and all of it's members
 // for the passed in url
 func (gClient *Client) GetAlbum(itemUrl string) (album *Album, status int, err error) {
-	data, status, err := gClient.GetRESTItem(itemUrl)
+	album = new(Album)
+	data, status, err := gClient.GetRESTItem(itemUrl, nil)
 	if err != nil || status != 200 {
 		return nil, status, err
 	}
 	album.Entity = data.Entity
 	for i := range data.Members {
-		mData, status, err := gClient.GetRESTItem(data.Members[i])
+		mData, status, err := gClient.GetRESTItem(data.Members[i], nil)
 		if err != nil || status != 200 {
 			return nil, status, err
 		}
@@ -193,7 +225,8 @@ func (gClient *Client) GetAlbum(itemUrl string) (album *Album, status int, err e
 			photo.Entity = mData.Entity
 			album.Photos = append(album.Photos, photo)
 		} else if mData.Entity.Type == ALBUM {
-			album.Albums = append(album.Albums, data.Members[i])
+			album.Albums = append(album.Albums, &Album{Entity: mData.Entity})
+
 		}
 	}
 	return
@@ -240,7 +273,10 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 	return
 }
 
-//Uploads an image to the passed in album url
+//Uploads an image to the passed in album ur
+// sections of this should probabaly be scrapped and replaced
+// with the go mime/multipart package
+// a lot of this is hardcoded which could cause issues in the future
 func (gClient *Client) UploadImage(title string, imagePath string,
 	parentUrl string) (url string, status string, err error) {
 	gClient.checkClient()
@@ -316,20 +352,6 @@ func getContentType(file string) string {
 		return "application/octet-stream"
 	}
 	return mType
-}
-
-//String function for pretty printing the entity REST  data
-func (entity *Entity) String() string {
-	strValue := ""
-	ref := reflect.ValueOf(entity).Elem()
-	entityType := ref.Type()
-	for i := 0; i < ref.NumField(); i++ {
-		field := ref.Field(i)
-		strValue += fmt.Sprint("%s: %s  %v\n",
-			entityType.Field(i).Name,
-			field.Type(), field.Interface())
-	}
-	return strValue
 }
 
 //Pull URL out of rest response

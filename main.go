@@ -33,20 +33,23 @@ var list bool
 var parent string
 var recurse bool
 var create string
+var folder bool
 
 func init() {
 	//setup command line flags
 	flag.StringVar(&url, "u", "", "url of the gallery")
 	flag.StringVar(&apiKey, "a", "", "API Key of the user of the gallery")
 	flag.BoolVar(&list, "l", false, "List the contents of the gallery")
-	flag.StringVar(&parent, "p", "", "Set the parent gallery name or ID")
+	flag.StringVar(&parent, "p", "1", "Set the parent gallery name or ID")
 	flag.BoolVar(&recurse, "r", false, "Recurse the gallery or file system's sub folders")
 	flag.StringVar(&create, "c", "", "Creates a gallery with the given name")
+	flag.BoolVar(&folder, "f", false, "Creates a local folder structure based on the gallery")
+
 	flag.Parse()
 }
 
 func main() {
-	//check flags
+	//check required flags
 	if url == "" {
 		fmt.Println("No URL specified with -u")
 		return
@@ -56,8 +59,6 @@ func main() {
 		return
 	}
 	client := gal3rest.NewClient(url, apiKey)
-	if parent == "" {
-		parent = "1"
-	}
 	fmt.Println(client)
+
 }

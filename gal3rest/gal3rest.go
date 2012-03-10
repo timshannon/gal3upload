@@ -162,7 +162,7 @@ func (gClient *Client) GetRESTItem(itemUrl string,
 		urlValues.Set(k, v)
 	}
 	itemUrl += "?" + urlValues.Encode()
-
+	fmt.Println("itemUrl: ", itemUrl)
 	req, _ := http.NewRequest("GET", itemUrl, nil)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
@@ -190,7 +190,7 @@ func (gClient *Client) checkClient() {
 		log.Panicln("No URL specified in the client." +
 			" Be sure to specify the REST url before making a request")
 	} else {
-		if gClient.Url[:1] != "/" {
+		if gClient.Url[len(gClient.Url)-1:] != "/" {
 			gClient.Url += "/"
 		}
 	}

@@ -153,15 +153,10 @@ func NewClient(url string, apiKey string) Client {
 // type: photo
 //       movie
 //       album
-func (gClient *Client) GetRESTItem(itemUrl string,
-	parameters map[string]string) (restData *RestData, status int, err error) {
+func (gClient *Client) GetRESTItem(itemUrl string) (restData *RestData, status int, err error) {
 	restData = new(RestData)
 	hClient := new(http.Client)
-	urlValues := url.Values{}
-	for k, v := range parameters {
-		urlValues.Set(k, v)
-	}
-	itemUrl += "?" + urlValues.Encode()
+
 	fmt.Println("itemUrl: ", itemUrl)
 	req, _ := http.NewRequest("GET", itemUrl, nil)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
@@ -201,22 +196,36 @@ func (gClient *Client) checkClient() {
 }
 
 //GetUrlFromId simply builds the REST url from the passed in ID
-func (gClient *Client) GetUrlFromId(id string) string {
+func (gClient *Client) GetUrlFromId(id string,
+	parameters map[string]string) string {
 	gClient.checkClient()
-	return gClient.Url + "rest/item/" + id
+	urlValues := url.Values{}
+	for k, v := range parameters {
+		urlValues.Set(k, v)
+	}
+	return gClient.Url + "rest/item/" + id + "?" + urlValues.Encode()
+}
+
+func (gClient *Client) GetItemsUrl(parameters map[string]string) string {
+	gClient.checkClient()
+	urlValues := url.Values{}
+	for k, v := range parameters {
+		urlValues.Set(k, v)
+	}
+	return gClient.Url + "rest/items?" + urlValues.Encode()
 }
 
 //GetAlbum returns the entity data for an album and all of it's members
 // for the passed in url
 func (gClient *Client) GetAlbum(itemUrl string) (album *Album, status int, err error) {
 	album = new(Album)
-	data, status, err := gClient.GetRESTItem(itemUrl, nil)
+	data, status, err := gClient.GetRESTItem(itemUrl)
 	if err != nil || status != 200 {
 		return nil, status, err
 	}
 	album.Entity = data.Entity
 	for i := range data.Members {
-		mData, status, err := gClient.GetRESTItem(data.Members[i], nil)
+		mData, status, err := gClient.GetRESTItem(data.Members[i])
 		if err != nil || status != 200 {
 			return nil, status, err
 		}

@@ -153,15 +153,21 @@ func NewClient(url string, apiKey string) Client {
 // type: photo
 //       movie
 //       album
-func (gClient *Client) GetRESTItem(itemUrl string) (restData *RestData, status int, err error) {
+func (gClient *Client) GetRESTItem(itemUrl string,
+	parameters map[string]string) (restData *RestData, status int, err error) {
 	restData = new(RestData)
 	hClient := new(http.Client)
 
-	fmt.Println("itemUrl: ", itemUrl)
+	urlValues := url.Values{}
+	for k, v := range parameters {
+		urlValues.Set(k, v)
+	}
+	itemUrl += urlValues.Encode()
+
 	req, _ := http.NewRequest("GET", itemUrl, nil)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
 	req.Header.Set("X-Gallery-Request-Key", gClient.APIKey)
-	fmt.Println("request: ", req)
+
 	response, err := hClient.Do(req)
 	if err != nil {
 		return
@@ -196,49 +202,16 @@ func (gClient *Client) checkClient() {
 }
 
 //GetUrlFromId simply builds the REST url from the passed in ID
-func (gClient *Client) GetUrlFromId(id string,
-	parameters map[string]string) string {
+func (gClient *Client) GetUrlFromId(id string) string {
 	gClient.checkClient()
-	urlValues := url.Values{}
-	for k, v := range parameters {
-		urlValues.Set(k, v)
-	}
-	return gClient.Url + "rest/item/" + id + "?" + urlValues.Encode()
+
+	return gClient.Url + "rest/item/" + id
 }
 
-func (gClient *Client) GetItemsUrl(parameters map[string]string) string {
+func (gClient *Client) GetItemsUrl() string {
 	gClient.checkClient()
-	urlValues := url.Values{}
-	for k, v := range parameters {
-		urlValues.Set(k, v)
-	}
-	return gClient.Url + "rest/items?" + urlValues.Encode()
-}
 
-//GetAlbum returns the entity data for an album and all of it's members
-// for the passed in url
-func (gClient *Client) GetAlbum(itemUrl string) (album *Album, status int, err error) {
-	album = new(Album)
-	data, status, err := gClient.GetRESTItem(itemUrl)
-	if err != nil || status != 200 {
-		return nil, status, err
-	}
-	album.Entity = data.Entity
-	for i := range data.Members {
-		mData, status, err := gClient.GetRESTItem(data.Members[i])
-		if err != nil || status != 200 {
-			return nil, status, err
-		}
-		if mData.Entity.Type == PHOTO {
-			photo := new(Photo)
-			photo.Entity = mData.Entity
-			album.Photos = append(album.Photos, photo)
-		} else if mData.Entity.Type == ALBUM {
-			album.Albums = append(album.Albums, &Album{Entity: mData.Entity})
-
-		}
-	}
-	return
+	return gClient.Url + "rest/items?"
 }
 
 //CreateAlbum creates an album with the passed in name and title inside the album at the

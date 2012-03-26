@@ -34,6 +34,7 @@ var parent string
 var recurse bool
 var create string
 var folder bool
+var client gal3rest.Client
 
 func init() {
 	//setup command line flags
@@ -58,7 +59,26 @@ func main() {
 		fmt.Println("No API key specified with -a")
 		return
 	}
-	client := gal3rest.NewClient(url, apiKey)
-	fmt.Println(client)
+	client = gal3rest.NewClient(url, apiKey)
+	switch {
+	case list:
+		List()
+		return
+	case create != "":
+		Create()
+		return
+	}
+	Upload()
+}
 
+func List() {
+	fmt.Println("list")
+}
+
+func Create() {
+	fmt.Println("create")
+}
+
+func Upload() {
+	fmt.Println("upload")
 }

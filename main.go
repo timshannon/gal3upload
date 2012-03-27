@@ -22,8 +22,11 @@ package main
 
 import (
 	"code.google.com/p/gal3upload/gal3rest"
+	"encoding/json"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"os"
 )
 
 //cmd line flags
@@ -34,7 +37,9 @@ var parent string
 var recurse bool
 var create string
 var folder bool
+var rebuildCache bool
 var client gal3rest.Client
+var cachedData []CacheData
 
 func init() {
 	//setup command line flags
@@ -45,8 +50,15 @@ func init() {
 	flag.BoolVar(&recurse, "r", false, "Recurse the gallery or file system's sub folders")
 	flag.StringVar(&create, "c", "", "Creates a gallery with the given name")
 	flag.BoolVar(&folder, "f", false, "Creates a local folder structure based on the gallery")
+	flag.BoolVar(&rebuildCache, "rebuild", false, "Forces a rebuild of the local cache file")
 
 	flag.Parse()
+}
+
+type CacheData struct {
+	Id       int
+	Name     string
+	ParentId int
 }
 
 func main() {
@@ -60,6 +72,7 @@ func main() {
 		return
 	}
 	client = gal3rest.NewClient(url, apiKey)
+	LoadCache()
 	switch {
 	case list:
 		List()
@@ -67,18 +80,47 @@ func main() {
 	case create != "":
 		Create()
 		return
+	case rebuildCache:
+		BuildCache()
+		return
+	default:
+		Upload()
 	}
-	Upload()
 }
 
+//List an album's contents
 func List() {
 	fmt.Println("list")
+	BuildCache()
 }
 
+//Create an album
 func Create() {
 	fmt.Println("create")
 }
 
+//Upload and image
 func Upload() {
 	fmt.Println("upload")
+}
+
+// BuildCache builds a local file that caches an album's name
+// id and parent id 
+func BuildCache() {
+
+}
+
+//LoadCache loads the local cache file into memory
+func LoadCache() {
+	data, err := ioutil.ReadFile(".cache")
+	if !os.IsNotExist(err) {
+		if err != nil {
+			panic(string(err.Error()))
+		}
+		err = json.Unmarshal(data, &cachedData)
+		if err != nil {
+			panic(string(err.Error()))
+		}
+	}
+
 }

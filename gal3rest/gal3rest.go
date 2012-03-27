@@ -202,10 +202,10 @@ func (gClient *Client) checkClient() {
 }
 
 //GetUrlFromId simply builds the REST url from the passed in ID
-func (gClient *Client) GetUrlFromId(id string) string {
+func (gClient *Client) GetUrlFromId(id int) string {
 	gClient.checkClient()
 
-	return gClient.Url + "rest/item/" + id
+	return gClient.Url + "rest/item/" + strconv.Itoa(id)
 }
 
 func (gClient *Client) GetItemsUrl() string {

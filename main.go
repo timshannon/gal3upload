@@ -56,9 +56,9 @@ func init() {
 }
 
 type CacheData struct {
-	Id       int
-	Name     string
-	ParentId int
+	Url       string
+	Name      string
+	ParentUrl string
 }
 
 func main() {
@@ -107,7 +107,28 @@ func Upload() {
 // BuildCache builds a local file that caches an album's name
 // id and parent id 
 func BuildCache() {
+	cachedData = RecurseAlbums(client.GetUrlFromId(1), "")
+	//write out cachedData
+}
 
+func RecurseAlbums(url string, parentUrl string) (cacheData []CacheData) {
+	params := map[string]string{
+		"type": "album",
+	}
+	data, status, err := client.GetRESTItem(parentUrl, params)
+	if err != nil {
+		panic(err.Error())
+	}
+	if status != 200 {
+		fmt.Println("Gallery returned a status of: ", status)
+		return
+	}
+	cachedData = append(cachedData, CacheData{url, data.Entity.Name, parentUrl})
+
+	for m := range data.Members {
+		cachedData = append(cachedData, RecurseAlbums(data.Members[m], url)...)
+	}
+	return
 }
 
 //LoadCache loads the local cache file into memory
@@ -117,6 +138,7 @@ func LoadCache() {
 		if err != nil {
 			panic(string(err.Error()))
 		}
+		//TODO: May not be able to go from interface to slice
 		err = json.Unmarshal(data, &cachedData)
 		if err != nil {
 			panic(string(err.Error()))

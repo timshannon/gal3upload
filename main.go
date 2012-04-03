@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 )
 
 //cmd line flags
@@ -38,6 +39,8 @@ var recurse bool
 var create string
 var folder bool
 var rebuildCache bool
+
+//globals
 var client gal3rest.Client
 var cachedData []CacheData
 
@@ -72,6 +75,10 @@ func main() {
 		return
 	}
 	client = gal3rest.NewClient(url, apiKey)
+	if rebuildCache {
+		BuildCache()
+	}
+
 	LoadCache()
 	switch {
 	case list:
@@ -80,18 +87,16 @@ func main() {
 	case create != "":
 		Create()
 		return
-	case rebuildCache:
-		BuildCache()
-		return
 	default:
 		Upload()
 	}
 }
 
-//List an album's contents
+//List an album's contents in the following format
+// Album Name [rest id]
+//  children will be one tab in from their parents
 func List() {
 	fmt.Println("list")
-	BuildCache()
 }
 
 //Create an album
@@ -104,30 +109,53 @@ func Upload() {
 	fmt.Println("upload")
 }
 
+//SetParent replaces the passed in parent id or name with the parent url
+func SetParent() string {
+	parentInt, err := strconv.Atoi(parent)
+
+	if err != nil {
+		//lookup parent url by name
+	} else {
+		parent = client.GetUrlFromId(parentInt)
+	}
+}
+
 // BuildCache builds a local file that caches an album's name
 // id and parent id 
 func BuildCache() {
 	cachedData = RecurseAlbums(client.GetUrlFromId(1), "")
+
 	//write out cachedData
+	data, err := json.Marshal(cachedData)
+	if err != nil {
+		panic(err.Error())
+	}
+	err = ioutil.WriteFile(".cache", data, 0644)
+	if err != nil {
+		panic(err.Error())
+	}
 }
 
-func RecurseAlbums(url string, parentUrl string) (cacheData []CacheData) {
+//Recursively gathers all albums from the given URL
+func RecurseAlbums(url string, parentUrl string) (returnData []CacheData) {
 	params := map[string]string{
 		"type": "album",
 	}
-	data, status, err := client.GetRESTItem(parentUrl, params)
+	data, status, err := client.GetRESTItem(url, params)
 	if err != nil {
 		panic(err.Error())
 	}
 	if status != 200 {
-		fmt.Println("Gallery returned a status of: ", status)
+		fmt.Println("Gallery at "+url+" returned a status of: ", status)
 		return
 	}
-	cachedData = append(cachedData, CacheData{url, data.Entity.Name, parentUrl})
+	//fmt.Println("Retrieved album: ", data.Entity.Name)
+	returnData = append(returnData, CacheData{url, data.Entity.Name, parentUrl})
 
 	for m := range data.Members {
-		cachedData = append(cachedData, RecurseAlbums(data.Members[m], url)...)
+		returnData = append(returnData, RecurseAlbums(data.Members[m], url)...)
 	}
+
 	return
 }
 
@@ -138,11 +166,12 @@ func LoadCache() {
 		if err != nil {
 			panic(string(err.Error()))
 		}
-		//TODO: May not be able to go from interface to slice
 		err = json.Unmarshal(data, &cachedData)
 		if err != nil {
 			panic(string(err.Error()))
 		}
+	} else {
+		BuildCache()
 	}
 
 }

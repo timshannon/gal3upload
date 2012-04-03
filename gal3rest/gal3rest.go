@@ -147,7 +147,7 @@ func NewClient(url string, apiKey string) Client {
 //GetRESTItem retrieves an arbitrary REST item from a Gallery3
 // Possible key value parameters:
 // scope: direct - only specific item
-//	  all - All descendants (recursive)
+//	  all - All descendants (recursive) doesn't seem to work
 // name: value - only return items containing value 
 // random: true - returns a single random item
 // type: photo
@@ -162,7 +162,7 @@ func (gClient *Client) GetRESTItem(itemUrl string,
 	for k, v := range parameters {
 		urlValues.Set(k, v)
 	}
-	itemUrl += urlValues.Encode()
+	itemUrl += "?" + urlValues.Encode()
 
 	req, _ := http.NewRequest("GET", itemUrl, nil)
 	req.Header.Set("X-Gallery-Request-Method", "GET")

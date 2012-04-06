@@ -28,6 +28,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 )
 
 //cmd line flags
@@ -96,7 +97,7 @@ func main() {
 // Album Name [rest id]
 //  children will be one tab in from their parents
 func List() {
-	fmt.Println("list")
+	SetParent()
 }
 
 //Create an album
@@ -117,8 +118,13 @@ func SetParent() {
 	if err != nil {
 		//lookup parent url by name
 		// simple loop for now, may sort data later if need be
-		//for i := range cachedData {
-		//}
+		for i := range cachedData {
+			if strings.Contains(cachedData[i].Name, parent) {
+				parent = cachedData[i].Url
+				fmt.Println("Parent: ", cachedData[i].Name)
+				fmt.Println("Parent URL: ", parent)
+			}
+		}
 
 	} else {
 		parent = client.GetUrlFromId(parentInt)
@@ -128,6 +134,7 @@ func SetParent() {
 // BuildCache builds a local file that caches an album's name
 // id and parent id 
 func BuildCache() {
+	fmt.Println("Building cache from REST data")
 	cachedData = RecurseAlbums(client.GetUrlFromId(1), "")
 
 	//write out cachedData

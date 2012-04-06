@@ -42,7 +42,7 @@ var rebuildCache bool
 
 //globals
 var client gal3rest.Client
-var cachedData []CacheData
+var cachedData []*CacheData
 
 func init() {
 	//setup command line flags
@@ -110,11 +110,16 @@ func Upload() {
 }
 
 //SetParent replaces the passed in parent id or name with the parent url
-func SetParent() string {
+func SetParent() {
 	parentInt, err := strconv.Atoi(parent)
-
+	//if parent flag is an int, build rest url
+	// otherwise do a name lookup
 	if err != nil {
 		//lookup parent url by name
+		// simple loop for now, may sort data later if need be
+		//for i := range cachedData {
+		//}
+
 	} else {
 		parent = client.GetUrlFromId(parentInt)
 	}
@@ -137,7 +142,7 @@ func BuildCache() {
 }
 
 //Recursively gathers all albums from the given URL
-func RecurseAlbums(url string, parentUrl string) (returnData []CacheData) {
+func RecurseAlbums(url string, parentUrl string) (returnData []*CacheData) {
 	params := map[string]string{
 		"type": "album",
 	}
@@ -150,7 +155,7 @@ func RecurseAlbums(url string, parentUrl string) (returnData []CacheData) {
 		return
 	}
 	//fmt.Println("Retrieved album: ", data.Entity.Name)
-	returnData = append(returnData, CacheData{url, data.Entity.Name, parentUrl})
+	returnData = append(returnData, &CacheData{url, data.Entity.Name, parentUrl})
 
 	for m := range data.Members {
 		returnData = append(returnData, RecurseAlbums(data.Members[m], url)...)

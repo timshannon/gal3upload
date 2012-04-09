@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -34,8 +35,9 @@ import (
 var url string
 var apiKey string
 var list bool
-var parent string
-var pid int
+var parentName string
+var parentUrl string
+var parentId int
 var gRecurse bool
 var create string
 var folder bool
@@ -50,8 +52,8 @@ func init() {
 	flag.StringVar(&url, "u", "", "url of the gallery")
 	flag.StringVar(&apiKey, "a", "", "API Key of the user of the gallery")
 	flag.BoolVar(&list, "l", false, "List the contents of the gallery")
-	flag.StringVar(&parent, "p", "", "Set the parent gallery")
-	flag.IntVar(&pid, "pid", 1, "Set the parent gallery id")
+	flag.StringVar(&parentName, "p", "", "Set the parent gallery")
+	flag.IntVar(&parentId, "pid", 1, "Set the parent gallery id")
 	flag.BoolVar(&gRecurse, "r", false, "Recurse the gallery or file system's sub folders")
 	flag.StringVar(&create, "c", "", "Creates a gallery with the given name")
 	flag.BoolVar(&folder, "f", false, "Creates a local folder structure based on the gallery")
@@ -98,12 +100,12 @@ func main() {
 // Album Name [rest id]
 //  children will be one tab in from their parents
 func List() {
-	parentName := SetParent()
+	SetParent()
 	fmt.Println("Listing Albums as Album Name [id]")
 	fmt.Println()
-	fmt.Println(parentName + " [" + GetId(parent) + "]")
+	fmt.Println(parentName + " [" + GetId(parentUrl) + "]")
 
-	PrintAlbum(parent, "", gRecurse)
+	PrintAlbum(parentUrl, "", gRecurse)
 }
 
 //GetId returns the REST id for the given url
@@ -114,7 +116,6 @@ func GetId(url string) string {
 
 func PrintAlbum(url string, tabs string, recurse bool) {
 	tabs += "    "
-
 	for i := range cachedData {
 		if cachedData[i].ParentUrl == url {
 			fmt.Println(tabs + cachedData[i].Name + " [" + GetId(cachedData[i].Url) + "]")
@@ -139,19 +140,21 @@ func Upload() {
 //SetParent replaces the passed in parent id or name with the parent url
 // returns the full name
 func SetParent() (name string) {
-	if parent != "" {
+	if parentName != "" {
 		//lookup parent url by name
 		// simple loop for now, may sort data later if need be
 		for i := range cachedData {
-			if strings.Contains(cachedData[i].Name, parent) {
-				parent = cachedData[i].Url
-				name = cachedData[i].Name
+			if strings.Contains(cachedData[i].Name, parentName) {
+				parentUrl = cachedData[i].Url
+				parentName = cachedData[i].Name
+				parentId, _ = strconv.Atoi(GetId(parentUrl))
 			}
 		}
 	} else {
-		parent = client.GetUrlFromId(pid)
-		data := GetAlbum(parent)
-		name = data.Entity.Name
+		//pid used
+		parentUrl = client.GetUrlFromId(parentId)
+		data := GetAlbum(parentUrl)
+		parentName = data.Entity.Name
 	}
 	return
 }
@@ -188,10 +191,10 @@ func GetAlbum(url string) (data *gal3rest.RestData) {
 }
 
 //Recursively gathers all albums from the given URL
-func RecurseAlbums(url string, parentUrl string) (returnData []*CacheData) {
+func RecurseAlbums(url string, purl string) (returnData []*CacheData) {
 	data := GetAlbum(url)
 	//fmt.Println("Retrieved album: ", data.Entity.Name)
-	returnData = append(returnData, &CacheData{url, data.Entity.Name, parentUrl})
+	returnData = append(returnData, &CacheData{url, data.Entity.Name, purl})
 
 	for m := range data.Members {
 		returnData = append(returnData, RecurseAlbums(data.Members[m], url)...)

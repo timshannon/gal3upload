@@ -27,7 +27,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 )
 
@@ -36,7 +35,8 @@ var url string
 var apiKey string
 var list bool
 var parent string
-var recurse bool
+var pid int
+var gRecurse bool
 var create string
 var folder bool
 var rebuildCache bool
@@ -50,8 +50,9 @@ func init() {
 	flag.StringVar(&url, "u", "", "url of the gallery")
 	flag.StringVar(&apiKey, "a", "", "API Key of the user of the gallery")
 	flag.BoolVar(&list, "l", false, "List the contents of the gallery")
-	flag.StringVar(&parent, "p", "1", "Set the parent gallery name or ID")
-	flag.BoolVar(&recurse, "r", false, "Recurse the gallery or file system's sub folders")
+	flag.StringVar(&parent, "p", "", "Set the parent gallery")
+	flag.IntVar(&pid, "pid", 1, "Set the parent gallery id")
+	flag.BoolVar(&gRecurse, "r", false, "Recurse the gallery or file system's sub folders")
 	flag.StringVar(&create, "c", "", "Creates a gallery with the given name")
 	flag.BoolVar(&folder, "f", false, "Creates a local folder structure based on the gallery")
 	flag.BoolVar(&rebuildCache, "rebuild", false, "Forces a rebuild of the local cache file")
@@ -97,7 +98,32 @@ func main() {
 // Album Name [rest id]
 //  children will be one tab in from their parents
 func List() {
-	SetParent()
+	parentName := SetParent()
+	fmt.Println("Listing Albums as Album Name [id]")
+	fmt.Println()
+	fmt.Println(parentName + " [" + GetId(parent) + "]")
+
+	PrintAlbum(parent, "", gRecurse)
+}
+
+//GetId returns the REST id for the given url
+func GetId(url string) string {
+	parts := strings.Split(url, "/")
+	return parts[len(parts)-1:][0]
+}
+
+func PrintAlbum(url string, tabs string, recurse bool) {
+	tabs += "    "
+
+	for i := range cachedData {
+		if cachedData[i].ParentUrl == url {
+			fmt.Println(tabs + cachedData[i].Name + " [" + GetId(cachedData[i].Url) + "]")
+			if recurse {
+				PrintAlbum(cachedData[i].Url, tabs, recurse)
+			}
+		}
+	}
+
 }
 
 //Create an album
@@ -111,24 +137,23 @@ func Upload() {
 }
 
 //SetParent replaces the passed in parent id or name with the parent url
-func SetParent() {
-	parentInt, err := strconv.Atoi(parent)
-	//if parent flag is an int, build rest url
-	// otherwise do a name lookup
-	if err != nil {
+// returns the full name
+func SetParent() (name string) {
+	if parent != "" {
 		//lookup parent url by name
 		// simple loop for now, may sort data later if need be
 		for i := range cachedData {
 			if strings.Contains(cachedData[i].Name, parent) {
 				parent = cachedData[i].Url
-				fmt.Println("Parent: ", cachedData[i].Name)
-				fmt.Println("Parent URL: ", parent)
+				name = cachedData[i].Name
 			}
 		}
-
 	} else {
-		parent = client.GetUrlFromId(parentInt)
+		parent = client.GetUrlFromId(pid)
+		data := GetAlbum(parent)
+		name = data.Entity.Name
 	}
+	return
 }
 
 // BuildCache builds a local file that caches an album's name
@@ -148,8 +173,7 @@ func BuildCache() {
 	}
 }
 
-//Recursively gathers all albums from the given URL
-func RecurseAlbums(url string, parentUrl string) (returnData []*CacheData) {
+func GetAlbum(url string) (data *gal3rest.RestData) {
 	params := map[string]string{
 		"type": "album",
 	}
@@ -159,8 +183,13 @@ func RecurseAlbums(url string, parentUrl string) (returnData []*CacheData) {
 	}
 	if status != 200 {
 		fmt.Println("Gallery at "+url+" returned a status of: ", status)
-		return
 	}
+	return
+}
+
+//Recursively gathers all albums from the given URL
+func RecurseAlbums(url string, parentUrl string) (returnData []*CacheData) {
+	data := GetAlbum(url)
 	//fmt.Println("Retrieved album: ", data.Entity.Name)
 	returnData = append(returnData, &CacheData{url, data.Entity.Name, parentUrl})
 

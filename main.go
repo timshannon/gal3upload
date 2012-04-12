@@ -146,13 +146,14 @@ func PrintAlbum(url string, tabs string, recurse bool) {
 
 func CheckStatus(status int) bool {
 	switch status {
-	case 200:
+	case 200, 201:
 		return true
 	case 403:
 		fmt.Println("Authorization Failure: Check your api key and url")
 		return false
 	default:
 		fmt.Println("An error occurred accessing the REST resource")
+		fmt.Println("Status returned was ", status)
 		return false
 	}
 	return false
@@ -170,6 +171,7 @@ func Create() {
 		return
 	}
 
+	fmt.Println("Album "+create+" created with an id of ", GetId(newUrl))
 	cachedData = append(cachedData, &CacheData{newUrl, create, parentUrl})
 	WriteCache()
 

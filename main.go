@@ -143,11 +143,22 @@ func SetParent() (name string) {
 	if parentName != "" {
 		//lookup parent url by name
 		// simple loop for now, may sort data later if need be
+		// Try to match exactly first
+		// Also check for names where spaces are replaced with -
+		altName := strings.Replace(parentName, " ", "-", -1)
 		for i := range cachedData {
+			if cachedData[i].Name == parentName ||
+				cachedData[i].Name == altName {
+				parentUrl = cachedData[i].Url
+				parentName = cachedData[i].Name
+				parentId, _ = strconv.Atoi(GetId(parentUrl))
+				break
+			}
 			if strings.Contains(cachedData[i].Name, parentName) {
 				parentUrl = cachedData[i].Url
 				parentName = cachedData[i].Name
 				parentId, _ = strconv.Atoi(GetId(parentUrl))
+				break
 			}
 		}
 	} else {

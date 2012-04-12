@@ -84,12 +84,30 @@ func main() {
 	}
 
 	LoadCache()
+	SetParent()
+	if parentUrl == "" {
+		if parentId == 0 {
+			//parent couldn't be found by name rebuild cache and try again
+			fmt.Println("Parent couldn't be found in local cache.")
+			BuildCache()
+			SetParent()
+		}
+		// if parent still isn't found, or pid was used and album not found
+		// exit
+		if parentUrl == "" {
+			fmt.Println("Parent name or ID doesn't exist in the Gallery")
+			return
+		}
+	}
 	switch {
 	case list:
 		List()
 		return
 	case create != "":
 		Create()
+		return
+	case folder:
+		CreateFolders()
 		return
 	default:
 		Upload()
@@ -100,7 +118,6 @@ func main() {
 // Album Name [rest id]
 //  children will be one tab in from their parents
 func List() {
-	SetParent()
 	fmt.Println("Listing Albums as Album Name [id]")
 	fmt.Println()
 	fmt.Println(parentName + " [" + GetId(parentUrl) + "]")
@@ -127,9 +144,35 @@ func PrintAlbum(url string, tabs string, recurse bool) {
 
 }
 
+func CheckStatus(status int) bool {
+	switch status {
+	case 200:
+		return true
+	case 403:
+		fmt.Println("Authorization Failure: Check your api key and url")
+		return false
+	default:
+		fmt.Println("An error occurred accessing the REST resource")
+		return false
+	}
+	return false
+
+}
+
 //Create an album
 func Create() {
 	fmt.Println("create")
+	newUrl, status, err := client.CreateAlbum(create, create, parentUrl)
+	if err != nil {
+		panic(err.Error())
+	}
+	if CheckStatus(status) != true {
+		return
+	}
+
+	cachedData = append(cachedData, &CacheData{newUrl, create, parentUrl})
+	WriteCache()
+
 }
 
 //Upload and image
@@ -146,6 +189,8 @@ func SetParent() (name string) {
 		// Try to match exactly first
 		// Also check for names where spaces are replaced with -
 		altName := strings.Replace(parentName, " ", "-", -1)
+		parentId = 0
+		parentUrl = ""
 		for i := range cachedData {
 			if cachedData[i].Name == parentName ||
 				cachedData[i].Name == altName {
@@ -164,8 +209,13 @@ func SetParent() (name string) {
 	} else {
 		//pid used
 		parentUrl = client.GetUrlFromId(parentId)
-		data := GetAlbum(parentUrl)
-		parentName = data.Entity.Name
+		data, good := GetAlbum(parentUrl)
+		if good {
+			parentName = data.Entity.Name
+		} else {
+			parentName = ""
+			parentUrl = ""
+		}
 	}
 	return
 }
@@ -176,6 +226,10 @@ func BuildCache() {
 	fmt.Println("Building cache from REST data")
 	cachedData = RecurseAlbums(client.GetUrlFromId(1), "")
 
+	WriteCache()
+}
+
+func WriteCache() {
 	//write out cachedData
 	data, err := json.Marshal(cachedData)
 	if err != nil {
@@ -187,7 +241,7 @@ func BuildCache() {
 	}
 }
 
-func GetAlbum(url string) (data *gal3rest.RestData) {
+func GetAlbum(url string) (data *gal3rest.RestData, good bool) {
 	params := map[string]string{
 		"type": "album",
 	}
@@ -195,15 +249,13 @@ func GetAlbum(url string) (data *gal3rest.RestData) {
 	if err != nil {
 		panic(err.Error())
 	}
-	if status != 200 {
-		fmt.Println("Gallery at "+url+" returned a status of: ", status)
-	}
+	good = CheckStatus(status)
 	return
 }
 
 //Recursively gathers all albums from the given URL
 func RecurseAlbums(url string, purl string) (returnData []*CacheData) {
-	data := GetAlbum(url)
+	data, _ := GetAlbum(url)
 	//fmt.Println("Retrieved album: ", data.Entity.Name)
 	returnData = append(returnData, &CacheData{url, data.Entity.Name, purl})
 
@@ -229,4 +281,9 @@ func LoadCache() {
 		BuildCache()
 	}
 
+}
+
+//CreateFolder creates a local folder based on the passed in parent
+// can recursively create a folder structure that represents the gallery structure
+func CreateFolders() {
 }

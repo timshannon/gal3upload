@@ -64,10 +64,10 @@ func init() {
 }
 
 type CacheData struct {
-	Url       string
-	Name      string
-	ParentUrl string
-	//add upload images to cache
+	Url            string
+	Name           string
+	ParentUrl      string
+	uploadedImages []string
 }
 
 func main() {
@@ -106,13 +106,13 @@ func main() {
 		List()
 		return
 	case create != "":
-		Create()
+		Create(create, parentUrl)
 		return
 	case folder:
 		CreateFolders(parentUrl, parentName, gRecurse)
 		return
 	default:
-		Upload()
+		Upload("", parentUrl, gRecurse)
 	}
 }
 
@@ -163,9 +163,8 @@ func CheckStatus(status int) bool {
 }
 
 //Create an album
-func Create() {
-	fmt.Println("create")
-	newUrl, status, err := client.CreateAlbum(create, create, parentUrl)
+func Create(name string, albumParentUrl string) {
+	newUrl, status, err := client.CreateAlbum(name, name, albumParentUrl)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -180,8 +179,33 @@ func Create() {
 }
 
 //Upload and image
-func Upload() {
-	fmt.Println("upload")
+func Upload(dir string, dirParentUrl string, recurse bool) {
+	//Get Url for current dir
+	var found bool
+	dirCache := &CacheData{}
+	for i := range cachedData {
+		if cachedData[i].Name == path.Base(dir) {
+			dirCache = cachedData[i]
+			found = true
+		}
+	}
+	if !found {
+		//Create new Gallery for folder
+		Create(path.Base(dir), dirParentUrl)
+	}
+	//Get list of png, jpg, jpeg, and gif files
+	//upload those that aren't in cache
+
+}
+
+func UploadImage(imagePath string, uploadUrl string, completed chan int) {
+	_, fileName := path.Split(imagePath)
+	_, status, err := client.UploadImage(fileName, imagePath, uploadUrl)
+	if err != nil {
+		fmt.Println("Error uploading image "+imagePath+": ", err.Error())
+	}
+	_ := CheckStatus(status)
+	completed <- 1
 }
 
 //SetParent replaces the passed in parent id or name with the parent url

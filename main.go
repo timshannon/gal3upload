@@ -109,7 +109,7 @@ func main() {
 		Create()
 		return
 	case folder:
-		CreateFolders()
+		CreateFolders(parentUrl, parentName, gRecurse)
 		return
 	default:
 		Upload()
@@ -292,20 +292,15 @@ func LoadCache() {
 
 //CreateFolder creates a local folder based on the passed in parent
 // can recursively create a folder structure that represents the gallery structure
-func CreateFolders() {
-	RecurseCreateFolder(parentUrl, parentName, gRecurse)
-}
-
-func RecurseCreateFolder(url string, dirPath string, recurse bool) {
+func CreateFolders(url string, dirPath string, recurse bool) {
 	err := os.MkdirAll(dirPath, 0774)
-	//fmt.Println("Created directory: ", dirPath)
 	if err != nil {
 		panic(err.Error())
 	}
 	if recurse {
 		for p := range cachedData {
 			if cachedData[p].ParentUrl == url {
-				RecurseCreateFolder(cachedData[p].Url,
+				CreateFolders(cachedData[p].Url,
 					path.Join(dirPath, cachedData[p].Name),
 					recurse)
 			}

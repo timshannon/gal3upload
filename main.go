@@ -216,6 +216,9 @@ func SetParent() (name string) {
 		data, good := GetAlbum(parentUrl)
 		if good {
 			parentName = data.Entity.Name
+			if parentId == 1 {
+				parentName = "Gallery Root"
+			}
 		} else {
 			parentName = ""
 			parentUrl = ""
@@ -294,7 +297,8 @@ func CreateFolders() {
 }
 
 func RecurseCreateFolder(url string, dirPath string, recurse bool) {
-	err := os.MkdirAll(dirPath, 0644)
+	err := os.MkdirAll(dirPath, 0774)
+	//fmt.Println("Created directory: ", dirPath)
 	if err != nil {
 		panic(err.Error())
 	}

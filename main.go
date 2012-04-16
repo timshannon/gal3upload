@@ -27,6 +27,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 )
@@ -66,6 +67,7 @@ type CacheData struct {
 	Url       string
 	Name      string
 	ParentUrl string
+	//add upload images to cache
 }
 
 func main() {
@@ -288,4 +290,21 @@ func LoadCache() {
 //CreateFolder creates a local folder based on the passed in parent
 // can recursively create a folder structure that represents the gallery structure
 func CreateFolders() {
+	RecurseCreateFolder(parentUrl, parentName, gRecurse)
+}
+
+func RecurseCreateFolder(url string, dirPath string, recurse bool) {
+	err := os.MkdirAll(dirPath, 0644)
+	if err != nil {
+		panic(err.Error())
+	}
+	if recurse {
+		for p := range cachedData {
+			if cachedData[p].ParentUrl == url {
+				RecurseCreateFolder(cachedData[p].Url,
+					path.Join(dirPath, cachedData[p].Name),
+					recurse)
+			}
+		}
+	}
 }

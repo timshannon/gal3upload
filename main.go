@@ -48,6 +48,20 @@ var rebuildCache bool
 var client gal3rest.Client
 var cachedData []*CacheData
 
+//valid upload file types
+var fileTypes = map[string]bool{
+	".jpg":  true,
+	".jpeg": true,
+	".png":  true,
+	".gif":  true,
+}
+
+type CacheData struct {
+	Url       string
+	Name      string
+	ParentUrl string
+}
+
 func init() {
 	//setup command line flags
 	flag.StringVar(&url, "u", "", "url of the gallery")
@@ -61,13 +75,6 @@ func init() {
 	flag.BoolVar(&rebuildCache, "rebuild", false, "Forces a rebuild of the local cache file")
 
 	flag.Parse()
-}
-
-type CacheData struct {
-	Url            string
-	Name           string
-	ParentUrl      string
-	uploadedImages []string
 }
 
 func main() {
@@ -106,7 +113,7 @@ func main() {
 		List()
 		return
 	case create != "":
-		Create(create, parentUrl)
+		_ = Create(create, parentUrl)
 		return
 	case folder:
 		CreateFolders(parentUrl, parentName, gRecurse)
@@ -163,7 +170,7 @@ func CheckStatus(status int) bool {
 }
 
 //Create an album
-func Create(name string, albumParentUrl string) {
+func Create(name string, albumParentUrl string) (newUrl string) {
 	newUrl, status, err := client.CreateAlbum(name, name, albumParentUrl)
 	if err != nil {
 		panic(err.Error())
@@ -175,6 +182,7 @@ func Create(name string, albumParentUrl string) {
 	fmt.Println("Album "+create+" created with an id of ", GetId(newUrl))
 	cachedData = append(cachedData, &CacheData{newUrl, create, parentUrl})
 	WriteCache()
+	return
 
 }
 
@@ -182,30 +190,97 @@ func Create(name string, albumParentUrl string) {
 func Upload(dir string, dirParentUrl string, recurse bool) {
 	//Get Url for current dir
 	var found bool
-	dirCache := &CacheData{}
+	var dirUrl string
+	dirCache := LoadUploadCache(dir)
 	for i := range cachedData {
 		if cachedData[i].Name == path.Base(dir) {
-			dirCache = cachedData[i]
+			dirUrl = cachedData[i].Url
 			found = true
 		}
 	}
 	if !found {
 		//Create new Gallery for folder
-		Create(path.Base(dir), dirParentUrl)
+		dirUrl = Create(path.Base(dir), dirParentUrl)
 	}
 	//Get list of png, jpg, jpeg, and gif files
-	//upload those that aren't in cache
+	var files []os.FileInfo
+	var chans []chan *CacheData
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	for f := range files {
+		if !files[f].IsDir() && fileTypes[path.Ext(files[f].Name())] {
+			var complete = make(chan *CacheData)
+			go UploadImage(path.Join(dir,
+				files[f].Name()),
+				dirUrl,
+				dirCache[files[f].Name()].Url,
+				complete)
+			chans = append(chans, complete)
+		}
+
+	}
+	for c := range chans {
+		cache := <-chans[c]
+		if cache.Name != "" {
+			dirCache[cache.Name] = cache
+		}
+	}
+	WriteUploadCache(dir, dirCache)
 
 }
 
-func UploadImage(imagePath string, uploadUrl string, completed chan int) {
+//load local list of previous images uploaded to make sure
+// the same images don't get uploaded more than once
+func LoadUploadCache(dir string) (uploadCache map[string]*CacheData) {
+	data, err := ioutil.ReadFile(path.Join(dir, ".uploadcache"))
+	if !os.IsNotExist(err) {
+		if err != nil {
+			panic(string(err.Error()))
+		}
+		err = json.Unmarshal(data, &uploadCache)
+		if err != nil {
+			panic(string(err.Error()))
+		}
+	}
+	return
+}
+
+func WriteUploadCache(dir string, uploadCache map[string]*CacheData) {
+	data, err := json.Marshal(uploadCache)
+	if err != nil {
+		panic(err.Error())
+	}
+	err = ioutil.WriteFile(path.Join(dir, ".uploadcache"), data, 0644)
+	if err != nil {
+		panic(err.Error())
+	}
+}
+
+//UploadImage checks if the image was previously uploaded and still exists in REST
+// and if not uploads the image
+func UploadImage(imagePath string, uploadUrl string, imageUrl string, completed chan *CacheData) {
+	if imageUrl != "" {
+		_, status, err := client.GetRESTItem(imageUrl, nil)
+		if err != nil {
+			panic(err.Error())
+		}
+		if status == 200 {
+			//image was previously uploaded
+			//exit without uploading
+			completed <- nil
+			return
+		}
+	}
 	_, fileName := path.Split(imagePath)
-	_, status, err := client.UploadImage(fileName, imagePath, uploadUrl)
+	newUrl, status, err := client.UploadImage(fileName, imagePath, uploadUrl)
 	if err != nil {
 		fmt.Println("Error uploading image "+imagePath+": ", err.Error())
 	}
-	_ := CheckStatus(status)
-	completed <- 1
+	_ = CheckStatus(status)
+	completed <- &CacheData{newUrl, fileName, uploadUrl}
 }
 
 //SetParent replaces the passed in parent id or name with the parent url

@@ -158,11 +158,13 @@ func (gClient *Client) GetRESTItem(itemUrl string,
 	restData = new(RestData)
 	hClient := new(http.Client)
 
-	urlValues := url.Values{}
-	for k, v := range parameters {
-		urlValues.Set(k, v)
+	if parameters != nil {
+		urlValues := url.Values{}
+		for k, v := range parameters {
+			urlValues.Set(k, v)
+		}
+		itemUrl += "?" + urlValues.Encode()
 	}
-	itemUrl += "?" + urlValues.Encode()
 
 	req, _ := http.NewRequest("GET", itemUrl, nil)
 	req.Header.Set("X-Gallery-Request-Method", "GET")
@@ -260,7 +262,7 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 // with the go mime/multipart package
 // a lot of this is hardcoded which could cause issues in the future
 func (gClient *Client) UploadImage(title string, imagePath string,
-	parentUrl string) (url string, status string, err error) {
+	parentUrl string) (url string, status int, err error) {
 	gClient.checkClient()
 	hClient := new(http.Client)
 
@@ -321,7 +323,7 @@ func (gClient *Client) UploadImage(title string, imagePath string,
 	}
 	response.Body.Close()
 	url = getUrl(rspValue)
-	status = response.Status
+	status = response.StatusCode
 	err = nil
 	return
 }

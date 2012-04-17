@@ -52,11 +52,11 @@ var cachedData []*CacheData
 const cRootName string = "Gallery3"
 
 //valid upload file types
-var fileTypes = map[string]bool{
-	".jpg":  true,
-	".jpeg": true,
-	".png":  true,
-	".gif":  true,
+var fileTypes = []string{
+	".jpg",
+	".jpeg",
+	".png",
+	".gif",
 }
 
 type CacheData struct {
@@ -190,8 +190,8 @@ func Create(name string, albumParentUrl string) (newUrl string) {
 		return
 	}
 
-	fmt.Println("Album "+create+" created with an id of ", GetId(newUrl))
-	cachedData = append(cachedData, &CacheData{newUrl, create, parentUrl})
+	fmt.Println("Album "+name+" created with an id of ", GetId(newUrl))
+	cachedData = append(cachedData, &CacheData{newUrl, name, albumParentUrl})
 	WriteCache()
 	return
 
@@ -200,10 +200,12 @@ func Create(name string, albumParentUrl string) (newUrl string) {
 //Upload and image
 func Upload(dir string, dirParentUrl string, recurse bool) {
 	//Get Url for current dir
-	fmt.Println("In directory: ", dir)
+	//fmt.Println("In directory: ", dir)
 	var found bool
 	var dirUrl string
 	var subDirs []string
+	var complete = make(chan *CacheData)
+	var numUploads int
 	//get list of previously uploaded images
 	dirCache := LoadUploadCache(dir)
 
@@ -219,30 +221,38 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 		dirUrl = Create(path.Base(dir), dirParentUrl)
 	}
 	//Get list of png, jpg, jpeg, and gif files
-	var chans []chan *CacheData
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		panic(err.Error())
 	}
 
 	for f := range files {
-		if !files[f].IsDir() && fileTypes[path.Ext(files[f].Name())] {
-			var complete = make(chan *CacheData)
-			go UploadImage(path.Join(dir,
-				files[f].Name()),
-				dirUrl,
-				dirCache[files[f].Name()].Url,
-				complete)
-			chans = append(chans, complete)
-		} else if files[f].IsDir() {
+		//fmt.Println("file: ", files[f].Name())
+		if files[f].IsDir() {
 			subDirs = append(subDirs, path.Join(dir, files[f].Name()))
-		}
+		} else {
+			var isImage bool = false
+			for t := range fileTypes {
+				if strings.ToLower(path.Ext(files[f].Name())) == fileTypes[t] {
+					isImage = true
+					break
+				}
+			}
+			if isImage {
+				fmt.Println("Image found: ", files[f].Name())
 
+				go UploadImage(path.Join(dir, files[f].Name()),
+					dirUrl,
+					dirCache[files[f].Name()].Url,
+					complete)
+				numUploads += 1
+			}
+		}
 	}
-	for c := range chans {
-		cache := <-chans[c]
-		if cache.Name != "" {
-			dirCache[cache.Name] = cache
+	for i := 0; i < numUploads; i++ {
+		c := <-complete
+		if c.Name != "" {
+			dirCache[c.Name] = c
 		}
 	}
 	WriteUploadCache(dir, dirCache)
@@ -283,7 +293,8 @@ func WriteUploadCache(dir string, uploadCache map[string]*CacheData) {
 
 //UploadImage checks if the image was previously uploaded and still exists in REST
 // and if not uploads the image
-func UploadImage(imagePath string, uploadUrl string, imageUrl string, completed chan *CacheData) {
+func UploadImage(imagePath string, uploadUrl string, imageUrl string, complete chan *CacheData) {
+	fmt.Println("Uploading ", imagePath)
 	if imageUrl != "" {
 		_, status, err := client.GetRESTItem(imageUrl, nil)
 		if err != nil {
@@ -292,7 +303,7 @@ func UploadImage(imagePath string, uploadUrl string, imageUrl string, completed 
 		if status == 200 {
 			//image was previously uploaded
 			//exit without uploading
-			completed <- &CacheData{}
+			complete <- &CacheData{}
 			return
 		}
 	}
@@ -303,7 +314,7 @@ func UploadImage(imagePath string, uploadUrl string, imageUrl string, completed 
 		fmt.Println("Error uploading image "+imagePath+": ", err.Error())
 	}
 	_ = CheckStatus(status)
-	completed <- &CacheData{newUrl, fileName, uploadUrl}
+	complete <- &CacheData{newUrl, fileName, uploadUrl}
 }
 
 //SetParent replaces the passed in parent id or name with the parent url

@@ -43,10 +43,13 @@ var gRecurse bool
 var create string
 var folder bool
 var rebuildCache bool
+var workingDir string
 
 //globals
 var client gal3rest.Client
 var cachedData []*CacheData
+
+const cRootName string = "Gallery3"
 
 //valid upload file types
 var fileTypes = map[string]bool{
@@ -73,6 +76,7 @@ func init() {
 	flag.StringVar(&create, "c", "", "Creates a gallery with the given name")
 	flag.BoolVar(&folder, "f", false, "Creates a local folder structure based on the gallery")
 	flag.BoolVar(&rebuildCache, "rebuild", false, "Forces a rebuild of the local cache file")
+	flag.StringVar(&workingDir, "wd", "", "Sets the working directory of the uploader")
 
 	flag.Parse()
 }
@@ -88,10 +92,13 @@ func main() {
 		return
 	}
 	client = gal3rest.NewClient(url, apiKey)
+
 	if rebuildCache {
 		BuildCache()
 	}
-
+	if workingDir != "" {
+		os.Chdir(workingDir)
+	}
 	LoadCache()
 	SetParent()
 	if parentUrl == "" {
@@ -119,7 +126,11 @@ func main() {
 		CreateFolders(parentUrl, parentName, gRecurse)
 		return
 	default:
-		Upload("", parentUrl, gRecurse)
+		wd, err := os.Getwd()
+		if err != nil {
+			panic(err.Error())
+		}
+		Upload(wd, parentUrl, gRecurse)
 	}
 }
 
@@ -189,10 +200,14 @@ func Create(name string, albumParentUrl string) (newUrl string) {
 //Upload and image
 func Upload(dir string, dirParentUrl string, recurse bool) {
 	//Get Url for current dir
+	fmt.Println("In directory: ", dir)
 	var found bool
 	var dirUrl string
 	var subDirs []string
+	//get list of previously uploaded images
 	dirCache := LoadUploadCache(dir)
+
+	//get url for current directory
 	for i := range cachedData {
 		if cachedData[i].Name == path.Base(dir) {
 			dirUrl = cachedData[i].Url
@@ -200,11 +215,10 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 		}
 	}
 	if !found {
-		//Create new Gallery for folder
+		//Create new album for folder
 		dirUrl = Create(path.Base(dir), dirParentUrl)
 	}
 	//Get list of png, jpg, jpeg, and gif files
-	var files []os.FileInfo
 	var chans []chan *CacheData
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
@@ -278,11 +292,12 @@ func UploadImage(imagePath string, uploadUrl string, imageUrl string, completed 
 		if status == 200 {
 			//image was previously uploaded
 			//exit without uploading
-			completed <- nil
+			completed <- &CacheData{}
 			return
 		}
 	}
 	_, fileName := path.Split(imagePath)
+	fmt.Println("Uploading image: ", imagePath)
 	newUrl, status, err := client.UploadImage(fileName, imagePath, uploadUrl)
 	if err != nil {
 		fmt.Println("Error uploading image "+imagePath+": ", err.Error())
@@ -324,7 +339,7 @@ func SetParent() (name string) {
 		if good {
 			parentName = data.Entity.Name
 			if parentId == 1 {
-				parentName = "Gallery Root"
+				parentName = cRootName
 			}
 		} else {
 			parentName = ""
@@ -371,7 +386,11 @@ func GetAlbum(url string) (data *gal3rest.RestData, good bool) {
 func RecurseAlbums(url string, purl string) (returnData []*CacheData) {
 	data, _ := GetAlbum(url)
 	//fmt.Println("Retrieved album: ", data.Entity.Name)
-	returnData = append(returnData, &CacheData{url, data.Entity.Name, purl})
+	name := data.Entity.Name
+	if GetId(url) == "1" {
+		name = cRootName
+	}
+	returnData = append(returnData, &CacheData{url, name, purl})
 
 	for m := range data.Members {
 		returnData = append(returnData, RecurseAlbums(data.Members[m], url)...)

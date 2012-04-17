@@ -191,6 +191,7 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 	//Get Url for current dir
 	var found bool
 	var dirUrl string
+	var subDirs []string
 	dirCache := LoadUploadCache(dir)
 	for i := range cachedData {
 		if cachedData[i].Name == path.Base(dir) {
@@ -219,6 +220,8 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 				dirCache[files[f].Name()].Url,
 				complete)
 			chans = append(chans, complete)
+		} else if files[f].IsDir() {
+			subDirs = append(subDirs, path.Join(dir, files[f].Name()))
 		}
 
 	}
@@ -229,6 +232,11 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 		}
 	}
 	WriteUploadCache(dir, dirCache)
+	if recurse {
+		for d := range subDirs {
+			Upload(subDirs[d], dirUrl, recurse)
+		}
+	}
 
 }
 

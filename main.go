@@ -240,10 +240,13 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 			}
 			if isImage {
 				fmt.Println("Image found: ", files[f].Name())
-
+				urlCache, ok := dirCache[files[f].Name()]
+				if !ok {
+					urlCache = &CacheData{}
+				}
 				go UploadImage(path.Join(dir, files[f].Name()),
 					dirUrl,
-					dirCache[files[f].Name()].Url,
+					urlCache.Url,
 					complete)
 				numUploads += 1
 			}

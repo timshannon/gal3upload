@@ -44,6 +44,7 @@ var create string
 var folder bool
 var rebuildCache bool
 var workingDir string
+var maxThreads = 2
 
 //globals
 var client gal3rest.Client
@@ -77,6 +78,7 @@ func init() {
 	flag.BoolVar(&folder, "f", false, "Creates a local folder structure based on the gallery")
 	flag.BoolVar(&rebuildCache, "rebuild", false, "Forces a rebuild of the local cache file")
 	flag.StringVar(&workingDir, "wd", "", "Sets the working directory of the uploader")
+	flag.IntVar(&maxThreads, "t", 1, "Sets the number of threads to use for uploads.")
 
 	flag.Parse()
 }
@@ -92,6 +94,10 @@ func main() {
 		return
 	}
 	client = gal3rest.NewClient(url, apiKey)
+
+	if maxThreads < 1 {
+		maxThreads = 1
+	}
 
 	if rebuildCache {
 		BuildCache()
@@ -205,7 +211,7 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 	var dirUrl string
 	var subDirs []string
 	var complete = make(chan *CacheData)
-	var numUploads int
+	var uploadList []*CacheData
 	//get list of previously uploaded images
 	dirCache := LoadUploadCache(dir)
 
@@ -239,23 +245,31 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 				}
 			}
 			if isImage {
-				fmt.Println("Image found: ", files[f].Name())
 				urlCache, ok := dirCache[files[f].Name()]
 				if !ok {
 					urlCache = &CacheData{}
 				}
-				go UploadImage(path.Join(dir, files[f].Name()),
-					dirUrl,
-					urlCache.Url,
-					complete)
-				numUploads += 1
+				uploadList = append(uploadList, &CacheData{urlCache.Url,
+					path.Join(dir, files[f].Name()),
+					dirUrl})
 			}
 		}
 	}
-	for i := 0; i < numUploads; i++ {
-		c := <-complete
-		if c.Name != "" {
-			dirCache[c.Name] = c
+	var i int
+	for u := 0; u < len(uploadList); {
+		i = 0
+		for ; i < maxThreads && u < len(uploadList); i++ {
+			go UploadImage(uploadList[u].Name,
+				uploadList[u].ParentUrl,
+				uploadList[u].Url,
+				complete)
+			u += 1
+		}
+		for j := 0; j < i; j++ {
+			c := <-complete
+			if c.Url != "" {
+				dirCache[c.Name] = c
+			}
 		}
 	}
 	WriteUploadCache(dir, dirCache)
@@ -280,6 +294,9 @@ func LoadUploadCache(dir string) (uploadCache map[string]*CacheData) {
 			panic(string(err.Error()))
 		}
 	}
+	if uploadCache == nil {
+		uploadCache = make(map[string]*CacheData)
+	}
 	return
 }
 
@@ -297,7 +314,6 @@ func WriteUploadCache(dir string, uploadCache map[string]*CacheData) {
 //UploadImage checks if the image was previously uploaded and still exists in REST
 // and if not uploads the image
 func UploadImage(imagePath string, uploadUrl string, imageUrl string, complete chan *CacheData) {
-	fmt.Println("Uploading ", imagePath)
 	if imageUrl != "" {
 		_, status, err := client.GetRESTItem(imageUrl, nil)
 		if err != nil {

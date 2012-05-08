@@ -216,10 +216,16 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 	dirCache := LoadUploadCache(dir)
 
 	//get url for current directory
-	for i := range cachedData {
-		if cachedData[i].Name == path.Base(dir) {
-			dirUrl = cachedData[i].Url
-			found = true
+	if path.Base(dir) == cRootName {
+		dirUrl = client.GetUrlFromId(1)
+		found = true
+	} else {
+		for i := range cachedData {
+			if cachedData[i].Name == path.Base(dir) &&
+				cachedData[i].ParentUrl == dirParentUrl {
+				dirUrl = cachedData[i].Url
+				found = true
+			}
 		}
 	}
 	if !found {

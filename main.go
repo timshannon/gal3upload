@@ -21,6 +21,7 @@
 package main
 
 import (
+	"bytes"
 	"code.google.com/p/gal3upload/gal3rest"
 	"encoding/json"
 	"flag"
@@ -46,6 +47,7 @@ var rebuildCache bool
 var workingDir string
 var maxThreads = 2
 var skipCache bool
+var connectionFile string
 
 //globals
 var client gal3rest.Client
@@ -81,14 +83,33 @@ func init() {
 	flag.StringVar(&workingDir, "wd", "", "Sets the working directory of the uploader")
 	flag.IntVar(&maxThreads, "t", 1, "Sets the number of threads to use for uploads.")
 	flag.BoolVar(&skipCache, "skipCache", false, "Skips building the local cache file")
+	flag.StringVar(&connectionFile, "connectFile", "", "File containing the API key and url of the gallery to connect to")
 
 	flag.Parse()
 }
 
 func main() {
 	//check required flags
+	if connectionFile != "" {
+		fileBytes, err := ioutil.ReadFile(connectionFile)
+		if err != nil {
+			panic(err)
+		}
+
+		buffer := bytes.NewBuffer(fileBytes)
+		url, err = buffer.ReadString('\n')
+		apiKey, err = buffer.ReadString('\n')
+		if err != nil {
+			panic(err)
+		}
+
+		url = strings.TrimSpace(url)
+		apiKey = strings.TrimSpace(apiKey)
+
+	}
 	if url == "" {
 		fmt.Println("No URL specified with -u")
+
 		return
 	}
 	if apiKey == "" {

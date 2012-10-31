@@ -45,6 +45,7 @@ var folder bool
 var rebuildCache bool
 var workingDir string
 var maxThreads = 2
+var skipCache bool
 
 //globals
 var client gal3rest.Client
@@ -79,6 +80,7 @@ func init() {
 	flag.BoolVar(&rebuildCache, "rebuild", false, "Forces a rebuild of the local cache file")
 	flag.StringVar(&workingDir, "wd", "", "Sets the working directory of the uploader")
 	flag.IntVar(&maxThreads, "t", 1, "Sets the number of threads to use for uploads.")
+	flag.BoolVar(&skipCache, "skipCache", false, "Skips building the local cache file")
 
 	flag.Parse()
 }
@@ -344,8 +346,8 @@ func UploadImage(imagePath string, uploadUrl string, imageUrl string, complete c
 
 //SetParent replaces the passed in parent id or name with the parent url
 // returns the full name
-func SetParent() (name string) {
-	if parentName != "" {
+func SetParent() {
+	if parentName != "" && !skipCache {
 		//lookup parent url by name
 		// simple loop for now, may sort data later if need be
 		// Try to match exactly first
@@ -389,9 +391,11 @@ func SetParent() (name string) {
 // id and parent id 
 func BuildCache() {
 	fmt.Println("Building cache from REST data")
-	cachedData = RecurseAlbums(client.GetUrlFromId(1), "")
+	if !skipCache {
+		cachedData = RecurseAlbums(client.GetUrlFromId(1), "")
 
-	WriteCache()
+		WriteCache()
+	}
 }
 
 func WriteCache() {

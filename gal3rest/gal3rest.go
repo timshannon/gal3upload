@@ -35,6 +35,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"crypto/tls"
 )
 
 //Client holds the url and API keys for the gallery being used
@@ -156,7 +157,11 @@ func NewClient(url string, apiKey string) Client {
 func (gClient *Client) GetRESTItem(itemUrl string,
 	parameters map[string]string) (restData *RestData, status int, err error) {
 	restData = new(RestData)
-	hClient := new(http.Client)
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
+		}
+	hClient := &http.Client{Transport: tr}
+//	hClient := new(http.Client)
 
 	if parameters != nil {
 		urlValues := url.Values{}
@@ -220,7 +225,11 @@ func (gClient *Client) GetItemsUrl() string {
 // passed in url
 func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) (itemUrl string, status int, err error) {
 	gClient.checkClient()
-	hClient := new(http.Client)
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
+		}
+	hClient := &http.Client{Transport: tr}
+//	hClient := new(http.Client)
 
 	c := &RestCreate{Name: name, Title: title, Type: ALBUM}
 	b, err := json.Marshal(c)
@@ -264,7 +273,11 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 func (gClient *Client) UploadImage(title string, imagePath string,
 	parentUrl string) (url string, status int, err error) {
 	gClient.checkClient()
-	hClient := new(http.Client)
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
+		}
+	hClient := &http.Client{Transport: tr}
+//	hClient := new(http.Client)
 
 	_, name := path.Split(imagePath)
 	c := &RestCreate{Name: name, Title: title, Type: PHOTO}

@@ -17,8 +17,8 @@ The default is to upload the current working directory, so there is no argument 
 
 # Arguments #
 
-| Argument Name | Purpose |
-| ------------- | ------- |
+| Argument Name    | Purpose |
+| ---------------- | ------- |
 | -u | URL of the gallery, must have http at the beginning and end in index.php | 
 | -a | API key.  Look this up in the Users/Groups page of your gallery dashboard | 
 | -l | List Gallery Contents. If no parent is specified with -p, then the root gallery (id 1) is used.  Albums are listed like: `Album Name [ID]` with the heirarchy represented by indentation | 
@@ -43,7 +43,9 @@ For uploads a local .uploadcache is created containing information on every file
 ## Examples ##
 
 *List the contents of the gallery named "Test Gallery"*
+
  `./gal3upload -u "http://example.com/gallery3/index.php" -a "1234" -l -p "Test Gallery"`
 
 *Upload the contents of the current folder to the gallery with ID 123*
+
  `/path/to/executable/gal3upload -u "http://example.com/gallery3/index.php" -a "1234" -pid 123`

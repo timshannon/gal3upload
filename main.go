@@ -21,8 +21,8 @@
 package main
 
 import (
+	"bitbucket.org/tshannon/gal3upload/gal3rest"
 	"bytes"
-	"code.google.com/p/gal3upload/gal3rest"
 	"encoding/json"
 	"flag"
 	"fmt"

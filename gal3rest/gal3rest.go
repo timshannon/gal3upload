@@ -24,6 +24,7 @@ package gal3rest
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -35,7 +36,6 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"crypto/tls"
 )
 
 //Client holds the url and API keys for the gallery being used
@@ -149,7 +149,7 @@ func NewClient(url string, apiKey string) Client {
 // Possible key value parameters:
 // scope: direct - only specific item
 //	  all - All descendants (recursive) doesn't seem to work
-// name: value - only return items containing value 
+// name: value - only return items containing value
 // random: true - returns a single random item
 // type: photo
 //       movie
@@ -158,10 +158,9 @@ func (gClient *Client) GetRESTItem(itemUrl string,
 	parameters map[string]string) (restData *RestData, status int, err error) {
 	restData = new(RestData)
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
-		}
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	hClient := &http.Client{Transport: tr}
-//	hClient := new(http.Client)
 
 	if parameters != nil {
 		urlValues := url.Values{}
@@ -178,13 +177,11 @@ func (gClient *Client) GetRESTItem(itemUrl string,
 	response, err := hClient.Do(req)
 	if err != nil {
 		return
-		//	log.Panic("Error connecting to: "+itemUrl+" Error: ", err)
 	}
 	body, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
 		return
-		//log.Panic("Error reading response: ", err)
 	}
 
 	json.Unmarshal(body, &restData)
@@ -226,10 +223,10 @@ func (gClient *Client) GetItemsUrl() string {
 func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) (itemUrl string, status int, err error) {
 	gClient.checkClient()
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
-		}
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	hClient := &http.Client{Transport: tr}
-//	hClient := new(http.Client)
+	//	hClient := new(http.Client)
 
 	c := &RestCreate{Name: name, Title: title, Type: ALBUM}
 	b, err := json.Marshal(c)
@@ -238,7 +235,7 @@ func (gClient *Client) CreateAlbum(title string, name string, parentUrl string) 
 		//		log.Panicln("Error marshalling Rest create: ", jErr)
 	}
 
-	//base64.URLEncoding.EncodeToString	
+	//base64.URLEncoding.EncodeToString
 	encodedValue := "entity=" + url.QueryEscape(string(b))
 
 	buffer := bytes.NewBuffer([]byte(encodedValue))
@@ -274,10 +271,10 @@ func (gClient *Client) UploadImage(title string, imagePath string,
 	parentUrl string) (url string, status int, err error) {
 	gClient.checkClient()
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify : true},
-		}
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	hClient := &http.Client{Transport: tr}
-//	hClient := new(http.Client)
+	//	hClient := new(http.Client)
 
 	_, name := path.Split(imagePath)
 	c := &RestCreate{Name: name, Title: title, Type: PHOTO}

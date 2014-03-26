@@ -48,6 +48,7 @@ var workingDir string
 var maxThreads = 2
 var skipCache bool
 var connectionFile string
+var verbose bool
 
 //globals
 var client gal3rest.Client
@@ -79,6 +80,7 @@ func init() {
 	flag.BoolVar(&gRecurse, "r", false, "Recurse the gallery or file system's sub folders")
 	flag.StringVar(&create, "c", "", "Creates a gallery with the given name")
 	flag.BoolVar(&folder, "f", false, "Creates a local folder structure based on the gallery")
+	flag.BoolVar(&verbose, "v", false, "Verbose - Prints each upload and album creation")
 	flag.BoolVar(&rebuildCache, "rebuild", false, "Forces a rebuild of the local cache file")
 	flag.StringVar(&workingDir, "wd", "", "Sets the working directory of the uploader")
 	flag.IntVar(&maxThreads, "t", 1, "Sets the number of threads to use for uploads.")
@@ -211,6 +213,9 @@ func CheckStatus(status int) bool {
 
 //Create an album
 func Create(name string, albumParentUrl string) (newUrl string) {
+	if verbose {
+		fmt.Println("Creating album " + name)
+	}
 	newUrl, status, err := client.CreateAlbum(name, name, albumParentUrl)
 	if err != nil {
 		panic(err.Error())
@@ -226,7 +231,7 @@ func Create(name string, albumParentUrl string) (newUrl string) {
 
 }
 
-//Upload and image
+//Upload an image
 func Upload(dir string, dirParentUrl string, recurse bool) {
 	//Get Url for current dir
 	//fmt.Println("In directory: ", dir)
@@ -344,9 +349,15 @@ func WriteUploadCache(dir string, uploadCache map[string]*CacheData) {
 // and if not uploads the image
 func UploadImage(imagePath string, uploadUrl string, imageUrl string, complete chan *CacheData) {
 	if imageUrl != "" {
+		if verbose {
+			fmt.Println("Checking for previously uploaded image at " + imageUrl)
+		}
 		_, status, err := client.GetRESTItem(imageUrl, nil)
 		if err != nil {
 			panic(err.Error())
+		}
+		if verbose {
+			fmt.Println("Finished checking for previously uploaded image at " + imageUrl)
 		}
 		if status == 200 {
 			//image was previously uploaded
@@ -360,6 +371,10 @@ func UploadImage(imagePath string, uploadUrl string, imageUrl string, complete c
 	newUrl, status, err := client.UploadImage(fileName, imagePath, uploadUrl)
 	if err != nil {
 		fmt.Println("Error uploading image "+imagePath+": ", err.Error())
+	}
+
+	if verbose {
+		fmt.Println("Finished uploading image: ", imagePath)
 	}
 	_ = CheckStatus(status)
 	complete <- &CacheData{newUrl, fileName, uploadUrl}
@@ -409,7 +424,7 @@ func SetParent() {
 }
 
 // BuildCache builds a local file that caches an album's name
-// id and parent id 
+// id and parent id
 func BuildCache() {
 	fmt.Println("Building cache from REST data")
 	if !skipCache {
@@ -432,12 +447,18 @@ func WriteCache() {
 }
 
 func GetAlbum(url string) (data *gal3rest.RestData, good bool) {
+	if verbose {
+		fmt.Println("Start Get Album " + url)
+	}
 	params := map[string]string{
 		"type": "album",
 	}
 	data, status, err := client.GetRESTItem(url, params)
 	if err != nil {
 		panic(err.Error())
+	}
+	if verbose {
+		fmt.Println("End Get Album " + url)
 	}
 	good = CheckStatus(status)
 	return

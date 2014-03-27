@@ -22,23 +22,28 @@ package main
 
 import (
 	"bitbucket.org/tshannon/config"
-	"fmt"
+	rest "bitbucket.org/tshannon/gal3upload/gal3rest"
 	"gopkg.in/v0/qml"
 	"os"
 )
 
-var cfg *config.Cfg
+var client *rest.Client
+var dialog qml.Object
 
 func main() {
 	qml.Init(nil)
 	engine := qml.NewEngine()
 
 	component, err := engine.LoadFile("main.qml")
-	handleError(err)
+	panic(err)
 
 	defer os.Exit(0)
 
-	handleError(LoadConfig())
+	LoadConfig()
+
+	if client != nil {
+		engine.Context().SetVar("client", client)
+	}
 
 	win := component.CreateWindow(nil)
 
@@ -46,15 +51,23 @@ func main() {
 	win.Wait()
 }
 
-func handleError(err error) {
+func errHandle(err error) bool {
+	//TODO: show dialog
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+		dialog.Call("show", "An error occurred: "+err.Error())
+		return true
 	}
+	return false
 }
 
-func LoadConfig() error {
-	var err error
-	cfg, err = config.LoadOrCreate("settings.json")
-	return err
+func LoadConfig() {
+	cfg, err := config.LoadOrCreate("settings.json")
+	if err != nil {
+		panic(err)
+	}
+
+	if cfg.String("url", "") == "url" || cfg.String("apikey", "") == "" {
+		//TODO: Show input dialog
+
+	}
 }

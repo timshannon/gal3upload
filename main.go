@@ -49,6 +49,7 @@ var maxThreads = 2
 var skipCache bool
 var connectionFile string
 var verbose bool
+var deleteOnComplete bool
 
 //globals
 var client gal3rest.Client
@@ -81,6 +82,7 @@ func init() {
 	flag.StringVar(&create, "c", "", "Creates a gallery with the given name")
 	flag.BoolVar(&folder, "f", false, "Creates a local folder structure based on the gallery")
 	flag.BoolVar(&verbose, "v", false, "Verbose - Prints each upload and album creation")
+	flag.BoolVar(&deleteOnComplete, "d", false, "Deletes images once they've been uploaded successfully")
 	flag.BoolVar(&rebuildCache, "rebuild", false, "Forces a rebuild of the local cache file")
 	flag.StringVar(&workingDir, "wd", "", "Sets the working directory of the uploader")
 	flag.IntVar(&maxThreads, "t", 1, "Sets the number of threads to use for uploads.")
@@ -306,7 +308,11 @@ func Upload(dir string, dirParentUrl string, recurse bool) {
 			}
 		}
 	}
-	WriteUploadCache(dir, dirCache)
+	//If uploader isn't cleaning up after itself, then previous uploads should be
+	// cached so they don't get uploaded again.
+	if !deleteOnComplete {
+		WriteUploadCache(dir, dirCache)
+	}
 	if recurse {
 		for d := range subDirs {
 			Upload(subDirs[d], dirUrl, recurse)
@@ -376,7 +382,16 @@ func UploadImage(imagePath string, uploadUrl string, imageUrl string, complete c
 	if verbose {
 		fmt.Println("Finished uploading image: ", imagePath)
 	}
-	_ = CheckStatus(status)
+	if !CheckStatus(status) {
+		//Image didn't upload properly
+		complete <- &CacheData{}
+	}
+
+	if deleteOnComplete {
+		if os.Remove(fileName) != nil {
+			fmt.Println("Error cleaning up successfully uploaded file: ", fileName)
+		}
+	}
 	complete <- &CacheData{newUrl, fileName, uploadUrl}
 }
 

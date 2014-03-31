@@ -23,6 +23,7 @@ The default is to upload the current working directory, so there is no argument 
 | -a | API key.  Look this up in the Users/Groups page of your gallery dashboard | 
 | -l | List Gallery Contents. If no parent is specified with -p, then the root gallery (id 1) is used.  Albums are listed like: `Album Name [ID]` with the heirarchy represented by indentation | 
 | -v | Verbose.  Adds in complete entity detail for the gallery listing |
+| -d | Deletes images once they've been uploaded successfully. Setting this option to true can make subsequent uploads run faster as they don't need to be checked for duplicates. |
 | -p | Set parent album name to use in either the the upload, or the gallery listing (-l). Name matching is case sensitive.  Note using an the album id with -pid is faster as the name doesn't need to be looked up.|
 | -pid | Set parent album id (REST ID) for use with either the upload or the gallery listing (-l) |
 | -r | Recurse folder if uploading, automatically creating galleries of the subfolders.  If -l(listing) a gallery, then it will recurse the gallery displaying all sub galleries and contents. Take care using the recurse option as it may take a long time with large galleries.|
